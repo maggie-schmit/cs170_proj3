@@ -16,7 +16,7 @@
 #include <time.h>
 #include <string.h>
 #include <queue>
-
+#include <semaphore.h>
 
 
 /*
@@ -62,7 +62,17 @@ typedef struct {
 	char *stack;
 } tcb_t;
 
-
+/*
+ * Additional Semaphore Struct definition
+ */
+typedef struct {
+	//stores the current value
+	int cur_val;
+	//a pointer to a queue for threats that are waiting
+	int* threat_wait;
+	//a flag that indicates whether the semaphore is initialized
+	bool flag_init;
+} semaphore_t;
 
 /*
  * Globals for thread scheduling and control
@@ -244,6 +254,11 @@ void pthread_exit(void *value_ptr) {
 	longjmp(garbage_collector.jb,1);
 }
 
+//TODO: sem_init, sem_destroy, sem_wait, sem_post
+int sem_init (sem_t ∗sem, int pshared, unsigned value ){
+	return 0;
+}
+
 
 void lock(){
 	// we don't want to be interrupted
@@ -306,6 +321,8 @@ void the_nowhere_zone(void) {
 		longjmp(thread_pool.front().jb,1);
 	}
 }
+
+
 
 /*
  * ptr_mangle()
