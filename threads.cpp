@@ -47,7 +47,7 @@ static struct sigaction act;
 #define STOP_TIMER setitimer(ITIMER_REAL,&zero_timer,NULL)
 /* number of ms for timer */
 #define INTERVAL 50
-
+#define SEM_VALUE_MAX 65536
 
 /*
  * Thread Control Block definition
@@ -66,13 +66,14 @@ typedef struct {
  * Additional Semaphore Struct definition
  */
 typedef struct {
+	sem_t mysem;
 	//stores the current value
-	int cur_val;
+	unsigned cur_val;
 	//a pointer to a queue for threats that are waiting
-	int* threat_wait;
+	int* sem_queue_ptr;
 	//a flag that indicates whether the semaphore is initialized
-	bool flag_init;
-} semaphore_t;
+	bool flag_init = false;
+} mysem_t;
 
 /*
  * Globals for thread scheduling and control
@@ -80,6 +81,10 @@ typedef struct {
 
 /* queue for pool thread, easy for round robin */
 static std::queue<tcb_t> thread_pool;
+
+/* queue for threats that are waiting */
+static std::queue<mysem_t> sem_queue;
+
 /* keep separate handle for main thread */
 static tcb_t main_tcb;
 static tcb_t garbage_collector;
@@ -255,10 +260,40 @@ void pthread_exit(void *value_ptr) {
 }
 
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
+//this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
 int sem_init (sem_t ∗sem, int pshared, unsigned value ){
+	mysem_t tmp_sem;
+
+	if (value < SEM_VALUE_MAX){
+		tmp_sem.cur_value = value;
+	} else {
+		//return error bc value should be less than sem value max
+		return -1;
+	}
+
+	if (pshared != 0){
+		//return error bc pshared should always be 0
+		return -1;
+	}
+
+	tmp_sem.flag_init = true;
+	sem_queue.push(tmp_sem);
+
+
 	return 0;
 }
 
+int sem_destroy(sem_t *sem){
+	return 0;
+}
+
+int sem_wait(sem_t *sem){
+	return 0;
+}
+
+int sem_post(sem_t *sem){
+	return 0;
+}
 
 void lock(){
 	// we don't want to be interrupted
