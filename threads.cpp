@@ -69,8 +69,8 @@ typedef struct {
 	sem_t mysem;
 	//stores the current value
 	unsigned cur_val;
-	//a pointer to a queue for threats that are waiting
-	int* sem_queue_ptr;
+	//a pointer to a queue for threads that are waiting
+	int* thread_queue_ptr;
 	//a flag that indicates whether the semaphore is initialized
 	bool flag_init = false;
 } mysem_t;
@@ -81,9 +81,6 @@ typedef struct {
 
 /* queue for pool thread, easy for round robin */
 static std::queue<tcb_t> thread_pool;
-
-/* queue for threats that are waiting */
-static std::queue<mysem_t> sem_queue;
 
 /* keep separate handle for main thread */
 static tcb_t main_tcb;
@@ -261,11 +258,14 @@ void pthread_exit(void *value_ptr) {
 
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
 //this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
-int sem_init (sem_t ∗sem, int pshared, unsigned value ){
-	mysem_t tmp_sem;
 
+//global to declare current semaphore??
+mysem_t cur_sem;
+
+int sem_init (sem_t ∗sem, int pshared, unsigned value ){
+	cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
-		tmp_sem.cur_value = value;
+		cur_sem.cur_val = value;
 	} else {
 		//return error bc value should be less than sem value max
 		return -1;
@@ -276,18 +276,29 @@ int sem_init (sem_t ∗sem, int pshared, unsigned value ){
 		return -1;
 	}
 
-	tmp_sem.flag_init = true;
-	sem_queue.push(tmp_sem);
-
+	cur_sem.flag_init = true;
+	// *sem = tmp_sem.mysem;
 
 	return 0;
 }
 
 int sem_destroy(sem_t *sem){
+
 	return 0;
 }
 
+//idk need to call block whatever
 int sem_wait(sem_t *sem){
+	while(cur_sem.cur_val == 0){
+		lock();
+	}
+
+	if(cur_sem.cur_val > 0){
+		cur_sem.cur_val = cur_sem.cur_val - 1;
+		return 0;
+	} else if (cur_sem.cur_val < 0){
+		return -1;
+	}
 	return 0;
 }
 
