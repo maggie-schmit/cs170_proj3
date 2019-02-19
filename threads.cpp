@@ -60,6 +60,8 @@ typedef struct {
 	jmp_buf jb;
 	/* stack pointer for thread; for main thread, this will be NULL */
 	char *stack;
+
+	bool blocked = false;
 } tcb_t;
 
 /*
@@ -256,6 +258,16 @@ void pthread_exit(void *value_ptr) {
 	longjmp(garbage_collector.jb,1);
 }
 
+int pthread_join(pthread_t thread, void **value_ptr){
+	// set that this pthread is blocked
+	thread_pool.front().blocked = true;
+
+	// TODO: check if thread is exited already
+	
+
+	return 0;
+}
+
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
 //this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
 
@@ -334,6 +346,12 @@ void signal_handler(int signo) {
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 		/* resume scheduler and GOOOOOOOOOO */
+		// check if the front thread is blocked.
+		// If it IS blocked, then we want to push it to the back and call another thread
+		while(thread_pool.front().blocked == true){
+			thread_pool.push(thread_pool.front());
+			thread_pool.pop();
+		}
 		longjmp(thread_pool.front().jb,1);
 	}
 
