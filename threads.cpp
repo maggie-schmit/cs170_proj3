@@ -17,8 +17,8 @@
 #include <string.h>
 #include <queue>
 #include <semaphore.h>
-
-
+#include <unordered_map>
+#include <map>
 /*
  * these could go in a .h file but i'm lazy
  * see comments before functions for detail
@@ -68,11 +68,15 @@ typedef struct {
  * Additional Semaphore Struct definition
  */
 typedef struct {
-	sem_t mysem;
+	// sem_t *mysem;
+	unsigned int sem_id;
 	//stores the current value
 	unsigned cur_val;
 	//a pointer to a queue for threads that are waiting
 	int* thread_queue_ptr;
+
+	/*queue for threads that are waiting*/
+	std::queue<tcb_t> wait_pool;
 	//a flag that indicates whether the semaphore is initialized
 	bool flag_init = false;
 } mysem_t;
@@ -81,8 +85,14 @@ typedef struct {
  * Globals for thread scheduling and control
  */
 
+//keep track of semaphore
+std::unordered_map<unsigned int, sem_t*> semaphore_map;
+
 /* queue for pool thread, easy for round robin */
 static std::queue<tcb_t> thread_pool;
+
+/*queue for threads that are waiting*/
+std::queue<tcb_t> wait_pool;
 
 /* keep separate handle for main thread */
 static tcb_t main_tcb;
@@ -272,10 +282,16 @@ int pthread_join(pthread_t thread, void **value_ptr){
 //this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
 
 //global to declare current semaphore??
-mysem_t cur_sem;
 
 int sem_init (sem_t ∗sem, int pshared, unsigned value ){
-	cur_sem.mysem = *sem;
+	
+	unsigned long sem_id_count = 0;
+
+	mysem_t cur_sem;
+	cur_sem.sem_id = sem_id_count;
+	sem_id_count++;
+
+	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
 		cur_sem.cur_val = value;
 	} else {
@@ -289,7 +305,9 @@ int sem_init (sem_t ∗sem, int pshared, unsigned value ){
 	}
 
 	cur_sem.flag_init = true;
+	sem->__align = &cur_sem;
 	// *sem = tmp_sem.mysem;
+	semaphore_map[cur_sem.sem_id] = cur_sem;
 
 	return 0;
 }
@@ -301,9 +319,18 @@ int sem_destroy(sem_t *sem){
 
 //idk need to call block whatever
 int sem_wait(sem_t *sem){
-	while(cur_sem.cur_val == 0){
-		lock();
-	}
+	mysem_t cur_sem;
+	
+	for (semaphore_map::const_iterator it = map.begin(); it != map.end(); ++it) {
+  		if ((it->second) == (sem->__align)){
+  			cur_sem = it->second;
+  		}
+  			// return it->first;
+  		else{
+  			printf("shit semaphore (wait) not in the map???\n");
+  		}
+	} 
+
 
 	if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
@@ -311,10 +338,39 @@ int sem_wait(sem_t *sem){
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
+
+	if (cur_sem.cur_val == 0){
+		//not sure if correct....
+		// thread_pool.front().blocked = true;
+		(cur_sem.wait_pool).push(thread_pool.front());
+	}
+
 	return 0;
+
 }
 
 int sem_post(sem_t *sem){
+	mysem_t cur_sem;
+	
+	for (semaphore_map::const_iterator it = map.begin(); it != map.end(); ++it) {
+  		if ((it->second).mysem == (sem->__align)){
+  			cur_sem = it->second;
+  		}
+  			// return it->first;
+  		else{
+  			printf("shit semaphore (post) not in the map???\n");
+  		}
+	} 
+
+	cur_sem.cur_val = cur_sem.cur_val + 1;
+	if (cur_sem.cur_val > 0){
+		(cur_sem.wait_pool).pop();
+		thread_pool.push((cur_sem.wait_pool).front())
+	} else if (cur_sem.cur_val < 0){
+		return -1;
+	}
+
+
 	return 0;
 }
 
