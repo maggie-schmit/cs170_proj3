@@ -17,8 +17,8 @@ void* thread2(void* arg){
   pthread_t t3, t4;
   pthread_create(&t3, NULL, thread3, NULL);
   pthread_create(&t4, NULL, thread3, NULL);
-  sleep(4);
   x = x+1;
+  sleep(4);
   printf("AHOY THERE 2\n");
 }
 
