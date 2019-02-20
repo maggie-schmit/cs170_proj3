@@ -15,7 +15,7 @@ void* thread2(void* arg){
 void* thread(void* arg)
 {
     //wait
-    // sem_wait(&mutex);
+    sem_wait(&mutex);
     printf("\nEntered..\n");
     pthread_t t2;
     pthread_create(&t2,NULL,thread2,NULL);
@@ -26,7 +26,7 @@ void* thread(void* arg)
 
     //signal
     printf("\nJust Exiting...\n");
-    // sem_post(&mutex);
+    sem_post(&mutex);
 }
 
 

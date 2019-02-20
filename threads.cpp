@@ -389,6 +389,26 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 }
 
 int sem_destroy(sem_t *sem){
+	mysem_t cur_sem;
+	auto itr = semaphore_map.find(((sem)->__align));
+	if ( itr != semaphore_map.end() ){
+		cur_sem = itr->second;
+		printf("got cur sem for destroy\n");
+	} else {
+		printf("not initialized at all");
+		return -1;
+	}
+
+
+	if (cur_sem.flag_init == true){
+		while ((cur_sem.wait_pool).size() != 0){
+			(cur_sem.wait_pool).pop();
+		}
+		(sem)->__align = NULL;
+		semaphore_map.erase(cur_sem.sem_id);
+	} else {
+		return -1;
+	}
 
 	return 0;
 }
