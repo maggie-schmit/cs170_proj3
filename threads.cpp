@@ -275,11 +275,15 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	STOP_TIMER;
 	thread_pool.front().blocked = true;
 	printf("size is: %d\n", thread_pool.size());
-	if( setjmp(thread_pool.front().jb) != 0){
-		return 1;
+	if(thread_pool.front().id != 0){
+		if( setjmp(thread_pool.front().jb) != 0){
+			perror("something went wrong with setjmp\n");
+			return 1;
+		}
 	}
 
 	// check if thread is exited already
+	printf("checking if thread is exited\n");
 	bool exited = false;
 	pthread_t curr_front = thread_pool.front().id;
 
@@ -295,16 +299,20 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	if(exited){
+		printf("thread is exited!\n");
 		thread_pool.front().blocked = false;
 		return ESRCH;
 	}
+	printf("thread is not exited; start on actual join stuff\n");
 
 	// if we get down here, then thread is at the front of the queue
 	// jump to thread but make sure that thread jumps here when it exits
 	START_TIMER;
 
 	thread_pool.front().blocker = true;
+	printf("ABOUT TO LONGJMP TO THREAD! YAY!\n");
 	longjmp(thread_pool.front().jb,1);
+	printf("we got past that longjmp yo\n");
 
 	// make sure that thread is at front
 	while(thread_pool.front().id != thread ){
