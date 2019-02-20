@@ -26,7 +26,8 @@
 void signal_handler(int signo);
 void the_nowhere_zone(void);
 static int ptr_mangle(int p);
-
+void lock();
+void unlock();
 
 /*
  *Timer globals
