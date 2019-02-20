@@ -412,7 +412,7 @@ int sem_wait(sem_t *sem){
 	 }
 
 
-	 printf("cur_sem val is %d\n", cur_sem.cur_val);
+	printf("cur_sem val is %d\n", cur_sem.cur_val);
 	if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
 		// return 0;
@@ -425,9 +425,11 @@ int sem_wait(sem_t *sem){
 		// thread_pool.front().blocked = true;
 		printf("pushing on the waiting queue\n");
 		(thread_pool.front()).blocked == true;
-		// (cur_sem.wait_pool).push(thread_pool.front());
+		(cur_sem.wait_pool).push(thread_pool.front());
 
 	}
+	//start timer again
+	START_TIMER;
 
 	// (thread_pool.front()).blocked == true;
 	printf("OH NO!\n");
@@ -439,8 +441,7 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
-	//start timer again
-	START_TIMER;
+	
 	printf("got cur sem for sem post\n");
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
@@ -452,8 +453,8 @@ int sem_post(sem_t *sem){
 	if (cur_sem.cur_val > 0){
 		printf("popping off the waiting queue\n");
 		(thread_pool.front()).blocked == false;
-		// (cur_sem.wait_pool).pop();
-		// thread_pool.push((cur_sem.wait_pool).front());
+		(cur_sem.wait_pool).pop();
+		thread_pool.push((cur_sem.wait_pool).front());
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
