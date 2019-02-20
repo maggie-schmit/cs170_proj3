@@ -472,6 +472,7 @@ void signal_handler(int signo) {
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
+		printf("jumping to thread: %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 
