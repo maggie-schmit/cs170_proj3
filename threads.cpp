@@ -288,9 +288,38 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	printf("size is: %d\n", thread_pool.size());
 	if(thread_pool.front().id != 0){
 		if( setjmp(thread_pool.front().jb) != 0){
+			// this is the return part
 			printf("thread id is: %d\n", thread_pool.front().id);
-			perror("something went wrong with setjmp\n");
-			return 1;
+			printf("we got past that longjmp yo\n");
+
+			STOP_TIMER;
+			// make sure that thread is at front
+			while(thread_pool.front().id != thread ){
+				thread_pool.push(thread_pool.front());
+				thread_pool.pop();
+			}
+
+			printf("get the return value!!\n");
+			int return_value = thread_pool.front().jb->__jmpbuf[4];
+
+			// get rid of thread
+			printf("delete the thread\n");
+			thread_pool.front().stack = NULL;
+			thread_pool.pop();
+
+
+			// make normal thread not blocked
+			printf("unblock the thread yo\n");
+			while(thread_pool.front().id != curr_front){
+				thread_pool.push(thread_pool.front());
+				thread_pool.pop();
+			}
+			// old thread is now at front
+			thread_pool.front().blocked = false;
+			START_TIMER;
+			printf("exiting this nasty\n");
+			// perror("something went wrong with setjmp\n");
+			return return_value;
 		}
 	}
 	printf("thread id of calling thread is: %d\n", thread_pool.front().id);
@@ -326,29 +355,9 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	thread_pool.front().blocker = true;
 	printf("ABOUT TO LONGJMP TO THREAD! YAY!\n");
 	longjmp(thread_pool.front().jb,1);
-	printf("we got past that longjmp yo\n");
-
-	// make sure that thread is at front
-	while(thread_pool.front().id != thread ){
-		thread_pool.push(thread_pool.front());
-		thread_pool.pop();
-	}
-
-	int return_value = thread_pool.front().jb->__jmpbuf[4];
-	longjmp(garbage_collector.jb,1);
-
-	STOP_TIMER;
-	// make normal thread not blocked
-	while(thread_pool.front().id != curr_front){
-		thread_pool.push(thread_pool.front());
-		thread_pool.pop();
-	}
-	// old thread is now at front
-	thread_pool.front().blocked = false;
-	START_TIMER;
 
 
-	return return_value;
+	return 1;
 }
 
 
@@ -497,10 +506,15 @@ void the_nowhere_zone(void) {
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
 	free((void*) thread_pool.front().stack);
-	thread_pool.front().stack = NULL;
+	if(!thread_pool.front().blocker ){
+		thread_pool.front().stack = NULL;
+		thread_pool.pop();
+	}else{
+		thread_pool.front().blocked = true;
+	}
 
 	/* Don't schedule the thread anymore */
-	thread_pool.pop();
+
 
 	/* If the last thread just exited, jump to main_tcb and exit.
 	   Otherwise, start timer again and jump to next thread*/
