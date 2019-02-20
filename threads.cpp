@@ -370,7 +370,7 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	unsigned long sem_id_count = 0;
 
 	mysem_t cur_sem;
-	
+	cur_sem.sem_id = sem_id_count;
 
 	auto itr = semaphore_map.find(cur_sem.sem_id);
 	if ( itr != semaphore_map.end() ){
