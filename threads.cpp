@@ -430,7 +430,7 @@ int sem_wait(sem_t *sem){
 		//not sure if correct....
 		// thread_pool.front().blocked = true;
 		printf("pushing on the waiting queue\n");
-		(thread_pool.front()).blocked = true;
+		// (thread_pool.front()).blocked = true;
 		(cur_sem.wait_pool).push(thread_pool.front());
 
 	}
@@ -457,9 +457,9 @@ int sem_post(sem_t *sem){
 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	if (cur_sem.cur_val > 0){
 		printf("popping off the waiting queue\n");
-		((cur_sem.wait_pool).front()).blocked = false;
+		// ((cur_sem.wait_pool).front()).blocked = false;
 		(cur_sem.wait_pool).pop();
-		thread_pool.push((cur_sem.wait_pool).front());
+		// thread_pool.push((cur_sem.wait_pool).front());
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
