@@ -62,6 +62,7 @@ typedef struct {
 	char *stack;
 
 	bool blocked = false;
+	bool blocker = false;
 } tcb_t;
 
 /*
@@ -268,15 +269,59 @@ void pthread_exit(void *value_ptr) {
 	longjmp(garbage_collector.jb,1);
 }
 
+
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
+	STOP_TIMER;
 	thread_pool.front().blocked = true;
+	if( setjmp(thread_pool.front().jb) != 0){
+		perror("SOMETHING WENT WRONG WITH SETJMP\n");
+	}
 
-	// TODO: check if thread is exited already
-	
+	// check if thread is exited already
+	bool exited = false;
+	pthread_t curr_front = thread_pool.front().id;
 
-	return 0;
+	while(thread_pool.front().id != thread.id ){
+		thread_pool.front().push(thread_pool.front());
+		thread_pool.pop();
+		if(thread_pool.front().id == curr_front){
+			// wrapped around to the calling thread
+			// this means that thread is already exited
+			exited = true;
+			break;
+		}
+	}
+
+	if(exited){
+		thread_pool.front().blocked = false;
+		return ESRCH;
+	}
+
+	// if we get down here, then thread is at the front of the queue
+	// jump to thread but make sure that thread jumps here when it exits
+	START_TIMER;
+
+	thread_pool.front().blocker = true;
+	longjmp(thread_pool.front().jb,1);
+
+	int return_value = thread.jb->__jmpbuf[4];
+	longjmp(garbage_collector.jb,1);
+
+	STOP_TIMER;
+	// make normal thread not blocked
+	while(thread_pool.front().id != curr_front){
+		thread_pool.front().push(thread_pool.front());
+		thread_pool.pop();
+	}
+	// old thread is now at front
+	thread_pool.front().blocked = false;
+	START_TIMER;
+
+
+	return return_value;
 }
+
 
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
 //this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
@@ -284,7 +329,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 //global to declare current semaphore??
 
 int sem_init (sem_t *sem, int pshared, unsigned value ){
-	
+
 	unsigned long sem_id_count = 0;
 
 	mysem_t cur_sem;
@@ -320,7 +365,7 @@ int sem_destroy(sem_t *sem){
 //idk need to call block whatever
 int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
-	
+
 	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
   		if ((it->second) == (*sem->__align)){
   			cur_sem = it->second;
@@ -329,7 +374,7 @@ int sem_wait(sem_t *sem){
   		else{
   			printf("shit semaphore (wait) not in the map???\n");
   		}
-	} 
+	}
 
 
 	if(cur_sem.cur_val > 0){
@@ -351,7 +396,7 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
-	
+
 	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
   		if ((it->second).mysem == (*sem->__align)){
   			cur_sem = it->second;
@@ -360,7 +405,7 @@ int sem_post(sem_t *sem){
   		else{
   			printf("shit semaphore (post) not in the map???\n");
   		}
-	} 
+	}
 
 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	if (cur_sem.cur_val > 0){
