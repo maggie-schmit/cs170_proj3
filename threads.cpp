@@ -62,6 +62,7 @@ typedef struct {
 	char *stack;
 
 	bool blocked = false;
+	bool blocker = false;
 } tcb_t;
 
 /*
@@ -184,7 +185,7 @@ int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_at
 	tmp_tcb.stack = (char *) malloc (32767);
 
 	*(int*)(tmp_tcb.stack+32763) = (int)restrict_arg;
-	*(int*)(tmp_tcb.stack+32759) = (int)pthread_exit;
+	*(int*)(tmp_tcb.stack+32759) = (int)pthread_exit_wrapper;
 
 	/* initialize jump buf structure to be 0, just in case there's garbage */
 	memset(&tmp_tcb.jb,0,sizeof(tmp_tcb.jb));
@@ -255,17 +256,61 @@ void pthread_exit(void *value_ptr) {
 	/* Jump to garbage collector stack frame to free memory and scheduler another thread.
 	   Since we're currently "living" on this thread's stack frame, deleting it while we're
 	   on it would be undefined behavior */
-	longjmp(garbage_collector.jb,1);
+	if(! thread_pool.front().blocker){
+		longjmp(garbage_collector.jb,1);
+	}
 }
 
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
+	STOP_TIMER;
 	thread_pool.front().blocked = true;
+	if( setjmp(thread_pool.front().jb) != 0){
+		perror("SOMETHING WENT WRONG WITH SETJMP\n");
+	}
 
-	// TODO: check if thread is exited already
-	
+	// check if thread is exited already
+	bool exited = false;
+	pthread_t curr_front = thread_pool.front().id;
 
-	return 0;
+	while(thread_pool.front().id != thread.id ){
+		thread_pool.front().push(thread_pool.front());
+		thread_pool.pop();
+		if(thread_pool.front().id == curr_front){
+			// wrapped around to the calling thread
+			// this means that thread is already exited
+			exited = true;
+			break;
+		}
+	}
+
+	if(exited){
+		thread_pool.front().blocked = false;
+		return ESRCH;
+	}
+
+	// if we get down here, then thread is at the front of the queue
+	// jump to thread but make sure that thread jumps here when it exits
+	START_TIMER;
+
+	thread_pool.front().blocker = true;
+	longjmp(thread_pool.front().jb,1);
+
+	int return_value = thread.jb->__jmpbuf[4];
+	longjmp(garbage_collector.jb,1);
+
+	STOP_TIMER;
+	// make normal thread not blocked
+	while(thread_pool.front().id != curr_front){
+		thread_pool.front().push(thread_pool.front());
+		thread_pool.pop();
+	}
+	// old thread is now at front
+	thread_pool.front().blocked = false;
+	START_TIMER;
+
+
+	return return_value;
 }
 
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
@@ -405,4 +450,11 @@ int ptr_mangle(int p)
     : "%eax"
     );
     return ret;
+}
+
+void pthread_exit_wrapper()
+{
+  unsigned int res;
+  asm("movl %%eax, %0\n":"=r"(res));
+  pthread_exit((void *) res);
 }
