@@ -86,7 +86,7 @@ typedef struct {
  */
 
 //keep track of semaphore
-std::unordered_map<unsigned int, sem_t*> semaphore_map;
+typedef std::unordered_map<unsigned int, mysem_t> semaphore_map;
 
 /* queue for pool thread, easy for round robin */
 static std::queue<tcb_t> thread_pool;
@@ -283,7 +283,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 //global to declare current semaphore??
 
-int sem_init (sem_t ∗sem, int pshared, unsigned value ){
+int sem_init (sem_t *sem, int pshared, unsigned value ){
 	
 	unsigned long sem_id_count = 0;
 
@@ -305,7 +305,7 @@ int sem_init (sem_t ∗sem, int pshared, unsigned value ){
 	}
 
 	cur_sem.flag_init = true;
-	sem->__align = &cur_sem;
+	*sem->__align = &cur_sem;
 	// *sem = tmp_sem.mysem;
 	semaphore_map[cur_sem.sem_id] = cur_sem;
 
@@ -321,8 +321,8 @@ int sem_destroy(sem_t *sem){
 int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	
-	for (semaphore_map::const_iterator it = map.begin(); it != map.end(); ++it) {
-  		if ((it->second) == (sem->__align)){
+	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
+  		if ((it->second) == (*sem->__align)){
   			cur_sem = it->second;
   		}
   			// return it->first;
@@ -352,8 +352,8 @@ int sem_wait(sem_t *sem){
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
 	
-	for (semaphore_map::const_iterator it = map.begin(); it != map.end(); ++it) {
-  		if ((it->second).mysem == (sem->__align)){
+	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
+  		if ((it->second).mysem == (*sem->__align)){
   			cur_sem = it->second;
   		}
   			// return it->first;
@@ -365,7 +365,7 @@ int sem_post(sem_t *sem){
 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	if (cur_sem.cur_val > 0){
 		(cur_sem.wait_pool).pop();
-		thread_pool.push((cur_sem.wait_pool).front())
+		thread_pool.push((cur_sem.wait_pool).front());
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
