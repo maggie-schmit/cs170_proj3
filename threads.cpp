@@ -514,7 +514,8 @@ void the_nowhere_zone(void) {
 	}else{
 		printf("we not deleting this bitch\n");
 		thread_pool.front().blocked = true;
-		return;
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
 	}
 
 	/* Don't schedule the thread anymore */
@@ -526,7 +527,7 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
-		printf("jumping!\n");
+		printf("jumping! to %d\n", thread_pool.front().jb);
 		longjmp(thread_pool.front().jb,1);
 	}
 }
