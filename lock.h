@@ -4,7 +4,6 @@
 
 namespace lock
 {
-    public:
       void lock();
       void unlock();
 }
