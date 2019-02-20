@@ -506,11 +506,13 @@ void the_nowhere_zone(void) {
 	/* free stack memory of exiting thread
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
-	free((void*) thread_pool.front().stack);
+	printf("in the nowhere_zone\n");
 	if(!thread_pool.front().blocker ){
+		free((void*) thread_pool.front().stack);
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
 	}else{
+		printf("we not deleting this bitch\n");
 		thread_pool.front().blocked = true;
 	}
 
