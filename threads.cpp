@@ -338,6 +338,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	thread_pool.front().blocker = true;
+	START_TIMER;
 	longjmp(thread_pool.front().jb,1);
 
 
