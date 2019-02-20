@@ -462,14 +462,6 @@ int sem_post(sem_t *sem){
 	return 0;
 }
 
-void lock(){
-	// we don't want to be interrupted
-	STOP_TIMER;
-}
-
-void unlock(){
-	RESUME_TIMER;
-}
 /*
  * signal_handler()
  *
