@@ -276,7 +276,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	thread_pool.front().blocked = true;
 	printf("size is: %d\n", thread_pool.size());
 	if( setjmp(thread_pool.front().jb) != 0){
-		return;
+		return 1;
 	}
 
 	// check if thread is exited already
