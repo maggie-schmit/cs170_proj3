@@ -430,7 +430,7 @@ int sem_wait(sem_t *sem){
 		//not sure if correct....
 		// thread_pool.front().blocked = true;
 		printf("pushing on the waiting queue\n");
-		(thread_pool.front()).blocked == true;
+		(thread_pool.front()).blocked = true;
 		(cur_sem.wait_pool).push(thread_pool.front());
 
 	}
