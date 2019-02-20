@@ -87,7 +87,7 @@ typedef struct {
  */
 
 //keep track of semaphore
-typedef std::unordered_map<unsigned int, mysem_t> semaphore_map;
+std::unordered_map<unsigned int, mysem_t> semaphore_map;
 
 /* queue for pool thread, easy for round robin */
 static std::queue<tcb_t> thread_pool;
@@ -270,57 +270,57 @@ void pthread_exit(void *value_ptr) {
 }
 
 
-int pthread_join(pthread_t thread, void **value_ptr){
-	// set that this pthread is blocked
-	STOP_TIMER;
-	thread_pool.front().blocked = true;
-	if( setjmp(thread_pool.front().jb) != 0){
-		perror("SOMETHING WENT WRONG WITH SETJMP\n");
-	}
+// int pthread_join(pthread_t thread, void **value_ptr){
+// 	// set that this pthread is blocked
+// 	STOP_TIMER;
+// 	thread_pool.front().blocked = true;
+// 	if( setjmp(thread_pool.front().jb) != 0){
+// 		perror("SOMETHING WENT WRONG WITH SETJMP\n");
+// 	}
 
-	// check if thread is exited already
-	bool exited = false;
-	pthread_t curr_front = thread_pool.front().id;
+// 	// check if thread is exited already
+// 	bool exited = false;
+// 	pthread_t curr_front = thread_pool.front().id;
 
-	while(thread_pool.front().id != thread.id ){
-		thread_pool.front().push(thread_pool.front());
-		thread_pool.pop();
-		if(thread_pool.front().id == curr_front){
-			// wrapped around to the calling thread
-			// this means that thread is already exited
-			exited = true;
-			break;
-		}
-	}
+// 	while(thread_pool.front().id != thread.id ){
+// 		thread_pool.front().push(thread_pool.front());
+// 		thread_pool.pop();
+// 		if(thread_pool.front().id == curr_front){
+// 			// wrapped around to the calling thread
+// 			// this means that thread is already exited
+// 			exited = true;
+// 			break;
+// 		}
+// 	}
 
-	if(exited){
-		thread_pool.front().blocked = false;
-		return ESRCH;
-	}
+// 	if(exited){
+// 		thread_pool.front().blocked = false;
+// 		return ESRCH;
+// 	}
 
-	// if we get down here, then thread is at the front of the queue
-	// jump to thread but make sure that thread jumps here when it exits
-	START_TIMER;
+// 	// if we get down here, then thread is at the front of the queue
+// 	// jump to thread but make sure that thread jumps here when it exits
+// 	START_TIMER;
 
-	thread_pool.front().blocker = true;
-	longjmp(thread_pool.front().jb,1);
+// 	thread_pool.front().blocker = true;
+// 	longjmp(thread_pool.front().jb,1);
 
-	int return_value = thread.jb->__jmpbuf[4];
-	longjmp(garbage_collector.jb,1);
+// 	int return_value = thread.jb->__jmpbuf[4];
+// 	longjmp(garbage_collector.jb,1);
 
-	STOP_TIMER;
-	// make normal thread not blocked
-	while(thread_pool.front().id != curr_front){
-		thread_pool.front().push(thread_pool.front());
-		thread_pool.pop();
-	}
-	// old thread is now at front
-	thread_pool.front().blocked = false;
-	START_TIMER;
+// 	STOP_TIMER;
+// 	// make normal thread not blocked
+// 	while(thread_pool.front().id != curr_front){
+// 		thread_pool.front().push(thread_pool.front());
+// 		thread_pool.pop();
+// 	}
+// 	// old thread is now at front
+// 	thread_pool.front().blocked = false;
+// 	START_TIMER;
 
 
-	return return_value;
-}
+	// return return_value;
+// }
 
 
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
@@ -350,9 +350,10 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	}
 
 	cur_sem.flag_init = true;
-	*sem->__align = &cur_sem;
+	sem->__align = cur_sem.sem_id;
 	// *sem = tmp_sem.mysem;
 	semaphore_map[cur_sem.sem_id] = cur_sem;
+	printf("hurray, sem initialized\n");
 
 	return 0;
 }
@@ -365,21 +366,19 @@ int sem_destroy(sem_t *sem){
 //idk need to call block whatever
 int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
-
-	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
-  		if ((it->second) == (*sem->__align)){
-  			cur_sem = it->second;
-  		}
-  			// return it->first;
-  		else{
-  			printf("shit semaphore (wait) not in the map???\n");
-  		}
-	}
+	//stop timer so we dont get interrupted;
+	STOP_TIMER;
+	 auto itr = semaphore_map.find(((sem)->__align));
+	 if ( itr != semaphore_map.end() ){
+	 	cur_sem = itr->second;
+	 	printf("got cur sem for wait\n");
+	 }
 
 
+	 printf("cur_sem val is %d\n", cur_sem.cur_val);
 	if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
-		return 0;
+		// return 0;
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
@@ -387,8 +386,15 @@ int sem_wait(sem_t *sem){
 	if (cur_sem.cur_val == 0){
 		//not sure if correct....
 		// thread_pool.front().blocked = true;
-		(cur_sem.wait_pool).push(thread_pool.front());
+		printf("pushing on the waiting queue\n");
+		(thread_pool.front()).blocked == true;
+		// (cur_sem.wait_pool).push(thread_pool.front());
+
 	}
+
+	// (thread_pool.front()).blocked == true;
+	printf("OH NO!\n");
+	printf("cur_sem val now is %d\n", cur_sem.cur_val);
 
 	return 0;
 
@@ -396,21 +402,21 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
-
-	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
-  		if ((it->second).mysem == (*sem->__align)){
-  			cur_sem = it->second;
-  		}
-  			// return it->first;
-  		else{
-  			printf("shit semaphore (post) not in the map???\n");
-  		}
-	}
+	//start timer again
+	START_TIMER;
+	printf("got cur sem for sem post\n");
+	auto itr = semaphore_map.find(((sem)->__align));
+	 if ( itr != semaphore_map.end() ){
+	 	cur_sem = itr->second;
+	 	printf("got cur sem for sem post\n");
+	 }
 
 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	if (cur_sem.cur_val > 0){
-		(cur_sem.wait_pool).pop();
-		thread_pool.push((cur_sem.wait_pool).front());
+		printf("popping off the waiting queue\n");
+		(thread_pool.front()).blocked == false;
+		// (cur_sem.wait_pool).pop();
+		// thread_pool.push((cur_sem.wait_pool).front());
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
