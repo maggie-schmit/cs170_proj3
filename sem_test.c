@@ -11,7 +11,7 @@ void* thread(void* arg)
     // sem_wait(&mutex);
     printf("\nEntered..\n");
     pthread_t t2;
-    pthread_create(&t2,NULL,thread,NULL);
+    pthread_create(&t2,NULL,thread2,NULL);
     pthread_join(t2, NULL);
 
     //critical section
