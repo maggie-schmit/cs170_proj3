@@ -20,7 +20,7 @@ void* thread(void* arg)
     pthread_t t2;
     pthread_create(&t2,NULL,thread2,NULL);
     pthread_join(t2, NULL);
-
+    printf("back in business bb\n");
     //critical section
     sleep(4);
 

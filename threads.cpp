@@ -204,7 +204,7 @@ int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_at
 	tmp_tcb.stack = (char *) malloc (32767);
 
 	*(int*)(tmp_tcb.stack+32763) = (int)restrict_arg;
-	*(int*)(tmp_tcb.stack+32759) = (int)pthread_exit;
+	*(int*)(tmp_tcb.stack+32759) = (int)pthread_exit_wrapper;
 
 	/* initialize jump buf structure to be 0, just in case there's garbage */
 	memset(&tmp_tcb.jb,0,sizeof(tmp_tcb.jb));
@@ -528,4 +528,11 @@ int ptr_mangle(int p)
     : "%eax"
     );
     return ret;
+}
+
+void pthread_exit_wrapper()
+{
+  unsigned int res;
+  asm("movl %%eax, %0\n":"=r"(res));
+  pthread_exit((void *) res);
 }
