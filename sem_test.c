@@ -5,6 +5,14 @@
 
 sem_t mutex;
 
+void* thread2(void* arg){
+  printf("AHOY THERE\n");
+  sleep(4);
+  printf("AHOY THERE\n");
+  sleep(4);
+}
+
+
 void* thread(void* arg)
 {
     //wait
@@ -22,12 +30,6 @@ void* thread(void* arg)
     // sem_post(&mutex);
 }
 
-void* thread2(void* arg){
-  printf("AHOY THERE\n");
-  sleep(4);
-  printf("AHOY THERE\n");
-  sleep(4);
-}
 
 
 int main()
