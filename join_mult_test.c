@@ -7,6 +7,7 @@ sem_t mutex;
 int x = 0;
 
 void* thread3(void* arg){
+  printf("in thread 3!\n");
   x = x+1;
 }
 
