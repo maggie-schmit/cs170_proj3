@@ -281,6 +281,8 @@ int pthread_join(pthread_t thread, void **value_ptr){
 			return 1;
 		}
 	}
+	printf("thread id of calling thread is: %d\n", thread_pool.front().id);
+	printf("thread id of joining thread is: %d\n", thread);
 
 	// check if thread is exited already
 	printf("checking if thread is exited\n");
@@ -465,6 +467,8 @@ void signal_handler(int signo) {
 		// check if the front thread is blocked.
 		// If it IS blocked, then we want to push it to the back and call another thread
 		while(thread_pool.front().blocked == true){
+			printf("blocked! push to next thread!\n");
+			printf("thread_id of blocked thread is: %d\n", thread_pool.front().id);
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
