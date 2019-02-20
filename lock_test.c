@@ -11,6 +11,7 @@ void* thread2(void* arg){
   sleep(4);
   printf("AHOY THERE\n");
   sleep(4);
+  unlock();
 }
 
 
