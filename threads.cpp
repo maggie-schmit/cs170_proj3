@@ -282,8 +282,8 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	bool exited = false;
 	pthread_t curr_front = thread_pool.front().id;
 
-	while(thread_pool.front().id != thread.id ){
-		thread_pool.front().push(thread_pool.front());
+	while(thread_pool.front().id != thread ){
+		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 		if(thread_pool.front().id == curr_front){
 			// wrapped around to the calling thread
@@ -305,13 +305,19 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	thread_pool.front().blocker = true;
 	longjmp(thread_pool.front().jb,1);
 
-	int return_value = thread.jb->__jmpbuf[4];
+	// make sure that thread is at front
+	while(thread_pool.front().id != thread ){
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
+	}
+
+	int return_value = thread_pool.front().jb->__jmpbuf[4];
 	longjmp(garbage_collector.jb,1);
 
 	STOP_TIMER;
 	// make normal thread not blocked
 	while(thread_pool.front().id != curr_front){
-		thread_pool.front().push(thread_pool.front());
+		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
 	// old thread is now at front
