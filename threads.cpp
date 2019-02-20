@@ -334,6 +334,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	if(exited){
 		thread_pool.front().blocked = false;
+		printf("%d is exited\n", thread);
 		return ESRCH;
 	}
 
