@@ -284,6 +284,7 @@ void pthread_exit(void *value_ptr) {
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
 	STOP_TIMER;
+	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
 	printf("size is: %d\n", thread_pool.size());
 	if(thread_pool.front().id != 0){
@@ -328,7 +329,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	// check if thread is exited already
 	printf("checking if thread is exited\n");
 	bool exited = false;
-	pthread_t curr_front = thread_pool.front().id;
+
 
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
