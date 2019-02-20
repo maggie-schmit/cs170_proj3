@@ -469,8 +469,8 @@ void signal_handler(int signo) {
 		// check if the front thread is blocked.
 		// If it IS blocked, then we want to push it to the back and call another thread
 		while(thread_pool.front().blocked == true || thread_pool.front().id == 0){
-			printf("blocked! push to next thread!\n");
-			printf("thread_id of blocked thread is: %d\n", thread_pool.front().id);
+			// printf("blocked! push to next thread!\n");
+			// printf("thread_id of blocked thread is: %d\n", thread_pool.front().id);
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
