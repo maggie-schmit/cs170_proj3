@@ -328,96 +328,96 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 //global to declare current semaphore??
 
-int sem_init (sem_t *sem, int pshared, unsigned value ){
-
-	unsigned long sem_id_count = 0;
-
-	mysem_t cur_sem;
-	cur_sem.sem_id = sem_id_count;
-	sem_id_count++;
-
-	// cur_sem.mysem = *sem;
-	if (value < SEM_VALUE_MAX){
-		cur_sem.cur_val = value;
-	} else {
-		//return error bc value should be less than sem value max
-		return -1;
-	}
-
-	if (pshared != 0){
-		//return error bc pshared should always be 0
-		return -1;
-	}
-
-	cur_sem.flag_init = true;
-	*sem->__align = &cur_sem;
-	// *sem = tmp_sem.mysem;
-	semaphore_map[cur_sem.sem_id] = cur_sem;
-
-	return 0;
-}
-
-int sem_destroy(sem_t *sem){
-
-	return 0;
-}
-
-//idk need to call block whatever
-int sem_wait(sem_t *sem){
-	mysem_t cur_sem;
-
-	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
-  		if ((it->second) == (*sem->__align)){
-  			cur_sem = it->second;
-  		}
-  			// return it->first;
-  		else{
-  			printf("shit semaphore (wait) not in the map???\n");
-  		}
-	}
-
-
-	if(cur_sem.cur_val > 0){
-		cur_sem.cur_val = cur_sem.cur_val - 1;
-		return 0;
-	} else if (cur_sem.cur_val < 0){
-		return -1;
-	}
-
-	if (cur_sem.cur_val == 0){
-		//not sure if correct....
-		// thread_pool.front().blocked = true;
-		(cur_sem.wait_pool).push(thread_pool.front());
-	}
-
-	return 0;
-
-}
-
-int sem_post(sem_t *sem){
-	mysem_t cur_sem;
-
-	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
-  		if ((it->second).mysem == (*sem->__align)){
-  			cur_sem = it->second;
-  		}
-  			// return it->first;
-  		else{
-  			printf("shit semaphore (post) not in the map???\n");
-  		}
-	}
-
-	cur_sem.cur_val = cur_sem.cur_val + 1;
-	if (cur_sem.cur_val > 0){
-		(cur_sem.wait_pool).pop();
-		thread_pool.push((cur_sem.wait_pool).front());
-	} else if (cur_sem.cur_val < 0){
-		return -1;
-	}
-
-
-	return 0;
-}
+// int sem_init (sem_t *sem, int pshared, unsigned value ){
+//
+// 	unsigned long sem_id_count = 0;
+//
+// 	mysem_t cur_sem;
+// 	cur_sem.sem_id = sem_id_count;
+// 	sem_id_count++;
+//
+// 	// cur_sem.mysem = *sem;
+// 	if (value < SEM_VALUE_MAX){
+// 		cur_sem.cur_val = value;
+// 	} else {
+// 		//return error bc value should be less than sem value max
+// 		return -1;
+// 	}
+//
+// 	if (pshared != 0){
+// 		//return error bc pshared should always be 0
+// 		return -1;
+// 	}
+//
+// 	cur_sem.flag_init = true;
+// 	*sem->__align = &cur_sem;
+// 	// *sem = tmp_sem.mysem;
+// 	semaphore_map[cur_sem.sem_id] = cur_sem;
+//
+// 	return 0;
+// }
+//
+// int sem_destroy(sem_t *sem){
+//
+// 	return 0;
+// }
+//
+// //idk need to call block whatever
+// int sem_wait(sem_t *sem){
+// 	mysem_t cur_sem;
+//
+// 	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
+//   		if ((it->second) == (*sem->__align)){
+//   			cur_sem = it->second;
+//   		}
+//   			// return it->first;
+//   		else{
+//   			printf("shit semaphore (wait) not in the map???\n");
+//   		}
+// 	}
+//
+//
+// 	if(cur_sem.cur_val > 0){
+// 		cur_sem.cur_val = cur_sem.cur_val - 1;
+// 		return 0;
+// 	} else if (cur_sem.cur_val < 0){
+// 		return -1;
+// 	}
+//
+// 	if (cur_sem.cur_val == 0){
+// 		//not sure if correct....
+// 		// thread_pool.front().blocked = true;
+// 		(cur_sem.wait_pool).push(thread_pool.front());
+// 	}
+//
+// 	return 0;
+//
+// }
+//
+// int sem_post(sem_t *sem){
+// 	mysem_t cur_sem;
+//
+// 	for (semaphore_map::const_iterator it = std::map.begin(); it != std::map.end(); ++it) {
+//   		if ((it->second).mysem == (*sem->__align)){
+//   			cur_sem = it->second;
+//   		}
+//   			// return it->first;
+//   		else{
+//   			printf("shit semaphore (post) not in the map???\n");
+//   		}
+// 	}
+//
+// 	cur_sem.cur_val = cur_sem.cur_val + 1;
+// 	if (cur_sem.cur_val > 0){
+// 		(cur_sem.wait_pool).pop();
+// 		thread_pool.push((cur_sem.wait_pool).front());
+// 	} else if (cur_sem.cur_val < 0){
+// 		return -1;
+// 	}
+//
+//
+// 	return 0;
+// }
 
 void lock(){
 	// we don't want to be interrupted
