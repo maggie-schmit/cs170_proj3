@@ -276,12 +276,8 @@ void pthread_exit(void *value_ptr) {
 	/* Jump to garbage collector stack frame to free memory and scheduler another thread.
 	   Since we're currently "living" on this thread's stack frame, deleting it while we're
 	   on it would be undefined behavior */
-	printf("ABOUT TO GARBAGE COLLECT (unless it's a blocker)\n");
-	if(! thread_pool.front().blocker){
-		printf("GARBAGE COLLECTING!\n");
-		longjmp(garbage_collector.jb,1);
-	}
-	printf("no garbage collection today\n");
+	printf("GARBAGE COLLECTING!\n");
+	longjmp(garbage_collector.jb,1);
 }
 
 
@@ -292,6 +288,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	printf("size is: %d\n", thread_pool.size());
 	if(thread_pool.front().id != 0){
 		if( setjmp(thread_pool.front().jb) != 0){
+			printf("thread id is: %d\n", thread_pool.front().id);
 			perror("something went wrong with setjmp\n");
 			return 1;
 		}
@@ -542,5 +539,4 @@ void pthread_exit_wrapper()
   unsigned int res;
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
-	printf("done with exit\n");
 }
