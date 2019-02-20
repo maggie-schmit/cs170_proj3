@@ -26,6 +26,7 @@
 void signal_handler(int signo);
 void the_nowhere_zone(void);
 static int ptr_mangle(int p);
+void pthread_exit_wrapper();
 void lock();
 void unlock();
 
