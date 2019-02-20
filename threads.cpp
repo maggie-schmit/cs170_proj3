@@ -105,6 +105,14 @@ static unsigned long id_counter = 1;
 static int has_initialized = 0;
 
 
+void lock(){
+	// we don't want to be interrupted
+	STOP_TIMER;
+}
+
+void unlock(){
+	RESUME_TIMER;
+}
 
 
 /*
@@ -436,14 +444,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 // 	return 0;
 // }
 
-void lock(){
-	// we don't want to be interrupted
-	STOP_TIMER;
-}
 
-void unlock(){
-	RESUME_TIMER;
-}
 /*
  * signal_handler()
  *
