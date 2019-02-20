@@ -278,8 +278,10 @@ void pthread_exit(void *value_ptr) {
 	   on it would be undefined behavior */
 	printf("ABOUT TO GARBAGE COLLECT (unless it's a blocker)\n");
 	if(! thread_pool.front().blocker){
+		printf("GARBAGE COLLECTING!\n");
 		longjmp(garbage_collector.jb,1);
 	}
+	printf("no garbage collection today\n");
 }
 
 
@@ -539,4 +541,5 @@ void pthread_exit_wrapper()
   unsigned int res;
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
+	printf("done with exit\n");
 }
