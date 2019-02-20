@@ -538,6 +538,7 @@ int ptr_mangle(int p)
 
 void pthread_exit_wrapper()
 {
+	printf("in pthread_exit_wrapper\n");
   unsigned int res;
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
