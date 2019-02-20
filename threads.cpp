@@ -370,8 +370,14 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	unsigned long sem_id_count = 0;
 
 	mysem_t cur_sem;
-	cur_sem.sem_id = sem_id_count;
-	sem_id_count++;
+	
+
+	auto itr = semaphore_map.find(cur_sem.sem_id);
+	if ( itr != semaphore_map.end() ){
+		sem_id_count++;
+		cur_sem.sem_id = sem_id_count;
+	}
+	
 
 	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
@@ -405,11 +411,11 @@ int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	//stop timer so we dont get interrupted;
 	STOP_TIMER;
-	 auto itr = semaphore_map.find(((sem)->__align));
-	 if ( itr != semaphore_map.end() ){
-	 	cur_sem = itr->second;
-	 	printf("got cur sem for wait\n");
-	 }
+	auto itr = semaphore_map.find(((sem)->__align));
+	if ( itr != semaphore_map.end() ){
+		cur_sem = itr->second;
+		printf("got cur sem for wait\n");
+	}
 
 
 	printf("cur_sem val is %d\n", cur_sem.cur_val);
@@ -442,7 +448,6 @@ int sem_wait(sem_t *sem){
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
 	
-	printf("got cur sem for sem post\n");
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
