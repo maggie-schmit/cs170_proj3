@@ -452,7 +452,7 @@ int sem_post(sem_t *sem){
 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	if (cur_sem.cur_val > 0){
 		printf("popping off the waiting queue\n");
-		((cur_sem.wait_pool).front()).blocked == false;
+		((cur_sem.wait_pool).front()).blocked = false;
 		(cur_sem.wait_pool).pop();
 		thread_pool.push((cur_sem.wait_pool).front());
 	} else if (cur_sem.cur_val < 0){
