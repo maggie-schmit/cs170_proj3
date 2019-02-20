@@ -24,13 +24,13 @@ void* thread(void* arg)
 int main() 
 { 
     sem_init(&mutex, 0, 1); 
-    pthread_t t1; 
+    pthread_t t1, t2; 
     pthread_create(&t1,NULL,thread,NULL); 
     sleep(2); 
     printf("bye!\n");
-    // pthread_create(&t2,NULL,thread,NULL); 
-    // pthread_join(t1,NULL); 
-    // pthread_join(t2,NULL); 
+    pthread_create(&t2,NULL,thread,NULL); 
+    pthread_join(t1,NULL); 
+    pthread_join(t2,NULL); 
     // sem_destroy(&mutex); 
     return 0; 
 } 
