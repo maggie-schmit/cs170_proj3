@@ -276,7 +276,6 @@ void pthread_exit(void *value_ptr) {
 	/* Jump to garbage collector stack frame to free memory and scheduler another thread.
 	   Since we're currently "living" on this thread's stack frame, deleting it while we're
 	   on it would be undefined behavior */
-	printf("GARBAGE COLLECTING!\n");
 	longjmp(garbage_collector.jb,1);
 }
 
@@ -287,12 +286,9 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	STOP_TIMER;
 	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
-	printf("size is: %d\n", thread_pool.size());
 	if(thread_pool.front().id != 0){
 		if( setjmp(thread_pool.front().jb) != 0){
 			// this is the return part
-			printf("thread id is: %d\n", thread_pool.front().id);
-			printf("we got past that longjmp yo\n");
 
 			STOP_TIMER;
 			// make sure that thread is at front
@@ -301,17 +297,14 @@ int pthread_join(pthread_t thread, void **value_ptr){
 				thread_pool.pop();
 			}
 
-			printf("get the return value!!\n");
 			int return_value = thread_pool.front().jb->__jmpbuf[4];
 
 			// get rid of thread
-			printf("delete the thread\n");
 			thread_pool.front().stack = NULL;
 			thread_pool.pop();
 
 
 			// make normal thread not blocked
-			printf("unblock the thread yo\n");
 			while(thread_pool.front().id != curr_front){
 				thread_pool.push(thread_pool.front());
 				thread_pool.pop();
@@ -319,16 +312,12 @@ int pthread_join(pthread_t thread, void **value_ptr){
 			// old thread is now at front
 			thread_pool.front().blocked = false;
 			START_TIMER;
-			printf("exiting this nasty\n");
 			// perror("something went wrong with setjmp\n");
 			return return_value;
 		}
 	}
-	printf("thread id of calling thread is: %d\n", thread_pool.front().id);
-	printf("thread id of joining thread is: %d\n", thread);
 
 	// check if thread is exited already
-	printf("checking if thread is exited\n");
 	bool exited = false;
 
 
@@ -344,14 +333,12 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	if(exited){
-		printf("thread is exited!\n");
 		thread_pool.front().blocked = false;
+		printf("thread is already exited\n");
 		return ESRCH;
 	}
-	printf("thread is not exited; start on actual join stuff\n");
 
 	thread_pool.front().blocker = true;
-	printf("ABOUT TO LONGJMP TO THREAD! YAY!\n");
 	longjmp(thread_pool.front().jb,1);
 
 
@@ -377,7 +364,7 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 		sem_id_count++;
 		cur_sem.sem_id = sem_id_count;
 	}
-	
+
 
 	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
@@ -447,7 +434,7 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
-	
+
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
@@ -496,7 +483,6 @@ void signal_handler(int signo) {
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
-		printf("jumping to thread: %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 
@@ -515,13 +501,11 @@ void the_nowhere_zone(void) {
 	/* free stack memory of exiting thread
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
-	printf("in the nowhere_zone\n");
 	if(!thread_pool.front().blocker ){
 		free((void*) thread_pool.front().stack);
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
 	}else{
-		printf("we not deleting this bitch\n");
 		thread_pool.front().blocked = true;
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
@@ -536,7 +520,6 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
-		printf("jumping! to %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 }
