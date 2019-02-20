@@ -10,6 +10,7 @@ void* thread(void* arg)
     //wait
     // sem_wait(&mutex);
     printf("\nEntered..\n");
+    pthread_t t2;
     pthread_create(&t2,NULL,thread,NULL);
     pthread_join(t2, NULL);
 
@@ -21,7 +22,7 @@ void* thread(void* arg)
     // sem_post(&mutex);
 }
 
-void* thread2(woid* arg){
+void* thread2(void* arg){
   printf("AHOY THERE\n");
   sleep(4);
   printf("AHOY THERE\n");
@@ -32,7 +33,7 @@ void* thread2(woid* arg){
 int main()
 {
     // sem_init(&mutex, 0, 1);
-    pthread_t t1,t2;
+    pthread_t t1;
     pthread_create(&t1,NULL,thread,NULL);
     sleep(2);
 
