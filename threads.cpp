@@ -276,7 +276,9 @@ void pthread_exit(void *value_ptr) {
 	/* Jump to garbage collector stack frame to free memory and scheduler another thread.
 	   Since we're currently "living" on this thread's stack frame, deleting it while we're
 	   on it would be undefined behavior */
-	longjmp(garbage_collector.jb,1);
+	if(! thread_pool.front().blocker){
+		longjmp(garbage_collector.jb,1);
+	}
 }
 
 
