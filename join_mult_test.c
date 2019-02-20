@@ -7,9 +7,7 @@ sem_t mutex;
 int x = 0;
 
 void* thread3(void* arg){
-  while(x == 0){
-    printf("x is still 0!\n");
-  }
+  x = x+1;
 }
 
 void* thread2(void* arg){
@@ -17,8 +15,9 @@ void* thread2(void* arg){
   pthread_t t3, t4;
   pthread_create(&t3, NULL, thread3, NULL);
   pthread_create(&t4, NULL, thread3, NULL);
-  x = x+1;
-  sleep(4);
+  while(x == 0){
+    sleep(1);
+  }
   printf("AHOY THERE 2\n");
 }
 
