@@ -19,6 +19,7 @@
 #include <semaphore.h>
 #include <unordered_map>
 #include <map>
+#include "lock.h"
 /*
  * these could go in a .h file but i'm lazy
  * see comments before functions for detail
