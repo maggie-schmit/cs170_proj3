@@ -9,7 +9,6 @@ int x = 0;
 void* thread3(void* arg){
   while(x == 0){
     printf("x is still 0!\n");
-    sleep(1);
   }
 }
 
