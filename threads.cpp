@@ -274,7 +274,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
 	STOP_TIMER;
 	thread_pool.front().blocked = true;
-	printf("size is: %d\n", thread_pool.size)
+	printf("size is: %d\n", thread_pool.size);
 	if( setjmp(thread_pool.front().jb) != 0){
 		perror("SOMETHING WENT WRONG WITH SETJMP\n");
 	}
