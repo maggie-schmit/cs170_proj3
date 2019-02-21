@@ -287,37 +287,35 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	STOP_TIMER;
 	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
-	if(thread_pool.front().id != 0){
-		if( setjmp(thread_pool.front().jb) != 0){
-			// this is the return part
+	if( setjmp(thread_pool.front().jb) != 0){
+		// this is the return part
 
-			printf("exited; back in pthread_join\n");
-			STOP_TIMER;
-			// make sure that thread is at front
-			while(thread_pool.front().id != thread ){
-				thread_pool.push(thread_pool.front());
-				thread_pool.pop();
-			}
-
-			int return_value = thread_pool.front().jb->__jmpbuf[4];
-
-			// get rid of thread
-			printf("about to free the stack\n");
-			thread_pool.front().stack = NULL;
+		printf("exited; back in pthread_join\n");
+		STOP_TIMER;
+		// make sure that thread is at front
+		while(thread_pool.front().id != thread ){
+			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
-
-
-			// make normal thread not blocked
-			while(thread_pool.front().id != curr_front){
-				thread_pool.push(thread_pool.front());
-				thread_pool.pop();
-			}
-			// old thread is now at front
-			thread_pool.front().blocked = false;
-			START_TIMER;
-			// perror("something went wrong with setjmp\n");
-			return return_value;
 		}
+
+		int return_value = thread_pool.front().jb->__jmpbuf[4];
+
+		// get rid of thread
+		printf("about to free the stack\n");
+		thread_pool.front().stack = NULL;
+		thread_pool.pop();
+
+
+		// make normal thread not blocked
+		while(thread_pool.front().id != curr_front){
+			thread_pool.push(thread_pool.front());
+			thread_pool.pop();
+		}
+		// old thread is now at front
+		thread_pool.front().blocked = false;
+		START_TIMER;
+		// perror("something went wrong with setjmp\n");
+		return return_value;
 	}
 
 	// check if thread is exited already
@@ -546,10 +544,6 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
-		while(thread_pool.front().id == 0){
-			thread_pool.push(thread_pool.front());
-			thread_pool.pop();
-		}
 		printf("about to jump to %d!\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
