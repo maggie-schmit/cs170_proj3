@@ -282,22 +282,25 @@ void pthread_exit(void *value_ptr) {
 
 
 int pthread_join(pthread_t thread, void **value_ptr){
+	printf("in pthread join\n");
 	// set that this pthread is blocked
-	printf("in pthread_join\n");
 	STOP_TIMER;
 	pthread_t curr_front = thread_pool.front().id;
+	printf("thread id in pthread_join: %d\n", thread_pool.front().id);
 	thread_pool.front().blocked = true;
 	if(thread_pool.front().id != 0){
+		printf("not in main\n");
 		if( setjmp(thread_pool.front().jb) != 0){
 			// this is the return part
 
 			STOP_TIMER;
 			// make sure that thread is at front
+			printf("making sure setjump worked\n");
 			while(thread_pool.front().id != thread ){
 				thread_pool.push(thread_pool.front());
 				thread_pool.pop();
 			}
-
+			printf("doing jump buf");
 			int return_value = thread_pool.front().jb->__jmpbuf[4];
 
 			// get rid of thread
@@ -320,13 +323,13 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	// check if thread is exited already
 	bool exited = false;
-	printf("checking if exited\n");
 
-
+	printf("checking if thread exited\n");
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 		if(thread_pool.front().id == curr_front){
+			printf("this thread id: %d exited\n",thread_pool.front().id);
 			// wrapped around to the calling thread
 			// this means that thread is already exited
 			exited = true;
@@ -336,13 +339,15 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	if(exited){
 		thread_pool.front().blocked = false;
-		printf("%d is exited\n", thread);
-		return ESRCH;
+		printf("damn exited...\n");
+		return -1;
 	}
 
 	thread_pool.front().blocker = true;
-	START_TIMER;
-	longjmp(thread_pool.front().jb,1);
+	if(!exited){
+		printf("long jump to thread id: %d\n",thread_pool.front().id);
+		longjmp(thread_pool.front().jb,1);
+	}
 
 
 	return 1;
@@ -407,8 +412,8 @@ int sem_destroy(sem_t *sem){
 		while ((cur_sem.wait_pool).size() != 0){
 			(cur_sem.wait_pool).pop();
 		}
-		(sem)->__align = NULL;
 		semaphore_map.erase(cur_sem.sem_id);
+		printf("destroyed sucessfully\n");
 	} else {
 		return -1;
 	}
@@ -420,13 +425,14 @@ int sem_destroy(sem_t *sem){
 int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	//stop timer so we dont get interrupted;
+	printf("size of thread pool in wait: %d\n", thread_pool.size());
+
 	STOP_TIMER;
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
 		printf("got cur sem for wait\n");
 	}
-
 
 	printf("cur_sem val is %d\n", cur_sem.cur_val);
 	if(cur_sem.cur_val > 0){
@@ -441,6 +447,7 @@ int sem_wait(sem_t *sem){
 		// thread_pool.front().blocked = true;
 		printf("pushing on the waiting queue\n");
 		// (thread_pool.front()).blocked = true;
+		printf("thread id is: %d\n", thread_pool.front().id);
 		(cur_sem.wait_pool).push(thread_pool.front());
 
 	}
@@ -448,7 +455,6 @@ int sem_wait(sem_t *sem){
 	START_TIMER;
 
 	// (thread_pool.front()).blocked == true;
-	printf("OH NO!\n");
 	printf("cur_sem val now is %d\n", cur_sem.cur_val);
 
 	return 0;
@@ -457,7 +463,7 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
-
+	STOP_TIMER;
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
@@ -465,14 +471,19 @@ int sem_post(sem_t *sem){
 	 }
 
 	cur_sem.cur_val = cur_sem.cur_val + 1;
+	printf("thread id is: %d\n", thread_pool.front().id);
 	if (cur_sem.cur_val > 0){
 		printf("popping off the waiting queue\n");
 		// ((cur_sem.wait_pool).front()).blocked = false;
 		(cur_sem.wait_pool).pop();
+		printf("size of thread pool: %d", thread_pool.size());
 		// thread_pool.push((cur_sem.wait_pool).front());
 	} else if (cur_sem.cur_val < 0){
 		return -1;
 	}
+
+	START_TIMER;
+
 
 
 	return 0;
