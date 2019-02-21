@@ -546,6 +546,10 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
+		while(thread_pool.front().id == 0){
+			thread_pool.push(thread_pool.front());
+			thread_pool.pop();
+		}
 		printf("about to jump to %d!\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
