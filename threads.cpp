@@ -283,14 +283,12 @@ void pthread_exit(void *value_ptr) {
 
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
-	printf("in pthread_join\n");
 	STOP_TIMER;
 	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
 	if( setjmp(thread_pool.front().jb) != 0){
 		// this is the return part
 
-		printf("exited; back in pthread_join\n");
 		STOP_TIMER;
 		// make sure that thread is at front
 		while(thread_pool.front().id != thread ){
@@ -301,7 +299,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		int return_value = thread_pool.front().jb->__jmpbuf[4];
 
 		// get rid of thread
-		printf("about to free the stack\n");
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
 
@@ -320,13 +317,11 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	// check if thread is exited already
 	bool exited = false;
-	printf("checking if exited\n");
 
 
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
-		printf("checking for exit; current id is %d\n", thread_pool.front().id);
 		if(thread_pool.front().id == curr_front){
 			// wrapped around to the calling thread
 			// this means that thread is already exited
@@ -337,16 +332,15 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	if(exited){
 		thread_pool.front().blocked = false;
-		printf("%d is exited\n", thread);
 		return ESRCH;
 	}
-	printf("doesn't exit!\n");
 
 	thread_pool.front().blocker = true;
 	START_TIMER;
 	longjmp(thread_pool.front().jb,1);
 
 
+	printf("TRESPASSING\n");
 	return 1;
 }
 
@@ -388,7 +382,6 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	sem->__align = cur_sem.sem_id;
 	// *sem = tmp_sem.mysem;
 	semaphore_map[cur_sem.sem_id] = cur_sem;
-	printf("hurray, sem initialized\n");
 
 	return 0;
 }
@@ -398,9 +391,7 @@ int sem_destroy(sem_t *sem){
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
-		printf("got cur sem for destroy\n");
 	} else {
-		printf("not initialized at all");
 		return -1;
 	}
 
@@ -409,7 +400,6 @@ int sem_destroy(sem_t *sem){
 		while ((cur_sem.wait_pool).size() != 0){
 			(cur_sem.wait_pool).pop();
 		}
-		(sem)->__align = NULL;
 		semaphore_map.erase(cur_sem.sem_id);
 	} else {
 		return -1;
@@ -426,11 +416,9 @@ int sem_wait(sem_t *sem){
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
-		printf("got cur sem for wait\n");
 	}
 
 
-	printf("cur_sem val is %d\n", cur_sem.cur_val);
 	if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
 		// return 0;
@@ -441,7 +429,6 @@ int sem_wait(sem_t *sem){
 	if (cur_sem.cur_val == 0){
 		//not sure if correct....
 		// thread_pool.front().blocked = true;
-		printf("pushing on the waiting queue\n");
 		// (thread_pool.front()).blocked = true;
 		(cur_sem.wait_pool).push(thread_pool.front());
 
@@ -450,8 +437,6 @@ int sem_wait(sem_t *sem){
 	START_TIMER;
 
 	// (thread_pool.front()).blocked == true;
-	printf("OH NO!\n");
-	printf("cur_sem val now is %d\n", cur_sem.cur_val);
 
 	return 0;
 
@@ -463,12 +448,10 @@ int sem_post(sem_t *sem){
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
-	 	printf("got cur sem for sem post\n");
 	 }
 
 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	if (cur_sem.cur_val > 0){
-		printf("popping off the waiting queue\n");
 		// ((cur_sem.wait_pool).front()).blocked = false;
 		(cur_sem.wait_pool).pop();
 		// thread_pool.push((cur_sem.wait_pool).front());
@@ -532,7 +515,6 @@ void the_nowhere_zone(void) {
 		thread_pool.front().blocked = true;
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
-		printf("in the_nowhere_zone\n");
 	}
 
 	/* Don't schedule the thread anymore */
@@ -545,7 +527,6 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
-		printf("about to jump to %d!\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 }
@@ -573,7 +554,6 @@ int ptr_mangle(int p)
 
 void pthread_exit_wrapper()
 {
-	printf("in pthread_exit_wrapper\n");
   unsigned int res;
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
