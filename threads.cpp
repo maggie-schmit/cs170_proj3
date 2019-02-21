@@ -541,7 +541,7 @@ void the_nowhere_zone(void) {
 	/* If the last thread just exited, jump to main_tcb and exit.
 	   Otherwise, start timer again and jump to next thread*/
 	if(thread_pool.size() == 0) {
-		printf("jumping to main!\n");
+		// printf("jumping to main!\n");
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
