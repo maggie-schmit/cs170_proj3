@@ -291,6 +291,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		if( setjmp(thread_pool.front().jb) != 0){
 			// this is the return part
 
+			printf("exited; back in pthread_join\n");
 			STOP_TIMER;
 			// make sure that thread is at front
 			while(thread_pool.front().id != thread ){
@@ -301,6 +302,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 			int return_value = thread_pool.front().jb->__jmpbuf[4];
 
 			// get rid of thread
+			printf("about to free the stack\n");
 			thread_pool.front().stack = NULL;
 			thread_pool.pop();
 
@@ -570,6 +572,7 @@ int ptr_mangle(int p)
 
 void pthread_exit_wrapper()
 {
+	printf("in pthread_exit_wrapper\n");
   unsigned int res;
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
