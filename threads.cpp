@@ -534,6 +534,7 @@ void the_nowhere_zone(void) {
 		thread_pool.front().blocked = true;
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
+		printf("in the_nowhere_zone\n");
 	}
 
 	/* Don't schedule the thread anymore */
@@ -545,6 +546,7 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
+		printf("about to jump to %d!\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 }
