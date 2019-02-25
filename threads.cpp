@@ -400,6 +400,7 @@ int sem_destroy(sem_t *sem){
 		while ((cur_sem.wait_pool).size() != 0){
 			(cur_sem.wait_pool).pop();
 		}
+		cur_sem.cur_val = NULL;
 		semaphore_map.erase(cur_sem.sem_id);
 	} else {
 		return -1;
@@ -428,8 +429,6 @@ int sem_wait(sem_t *sem){
 
 	if (cur_sem.cur_val == 0){
 		//not sure if correct....
-		// thread_pool.front().blocked = true;
-		// (thread_pool.front()).blocked = true;
 		(cur_sem.wait_pool).push(thread_pool.front());
 
 	}
@@ -444,21 +443,25 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
-
+	STOP_TIMER;
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
 	 }
-
-	cur_sem.cur_val = cur_sem.cur_val + 1;
-	if (cur_sem.cur_val > 0){
-		// ((cur_sem.wait_pool).front()).blocked = false;
-		(cur_sem.wait_pool).pop();
-		// thread_pool.push((cur_sem.wait_pool).front());
-	} else if (cur_sem.cur_val < 0){
-		return -1;
+	if((cur_sem.wait_pool).empty()){
+		cur_sem.cur_val = cur_sem.cur_val + 1;
+	} else {
+		if (cur_sem.cur_val > 0){
+			// ((cur_sem.wait_pool).front()).blocked = false;
+			(cur_sem.wait_pool).pop();
+			thread_pool.push((cur_sem.wait_pool).front());
+		} else if (cur_sem.cur_val < 0){
+			return -1;
+		}
 	}
-
+	
+	
+	START_TIMER;
 
 	return 0;
 }
