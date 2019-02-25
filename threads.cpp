@@ -430,6 +430,7 @@ int sem_wait(sem_t *sem){
 
 	if (cur_sem.cur_val == 0){
 		//not sure if correct....
+		// (thread_pool.front()).blocked = true;
 		(cur_sem.wait_pool).push(thread_pool.front());
 
 	}
@@ -449,18 +450,21 @@ int sem_post(sem_t *sem){
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
 	 }
-	if((cur_sem.wait_pool).empty()){
-		cur_sem.cur_val = cur_sem.cur_val + 1;
-	} else {
+	// if((cur_sem.wait_pool).empty()){
+	// 	cur_sem.cur_val = cur_sem.cur_val + 1;
+	// 	printf("did this increment?\n");
+	// } else {
+	 	cur_sem.cur_val = cur_sem.cur_val + 1;
+
 		if (cur_sem.cur_val > 0){
-			// ((cur_sem.wait_pool).front()).blocked = false;
 			(cur_sem.wait_pool).pop();
-			thread_pool.push((cur_sem.wait_pool).front());
+			// ((cur_sem.wait_pool).front()).blocked = false;
+			// thread_pool.push((cur_sem.wait_pool).front());
 		} else if (cur_sem.cur_val < 0){
 			START_TIMER;
 			return -1;
 		}
-	}
+	//}
 	
 	
 	START_TIMER;
