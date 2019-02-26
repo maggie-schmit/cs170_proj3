@@ -468,7 +468,6 @@ int sem_wait(sem_t *sem){
 		}
 		printf("starting to sleep, %d\n", thread_pool.front().id);
 		sleep(500000000);
-		RESUME_TIMER;
 		return 0;
 	}
 
@@ -536,7 +535,7 @@ int sem_post(sem_t *sem){
 				semaphore_map[cur_sem.sem_id].wait_pool.pop();
 			}
 			// put the front thread back in front
-			while(thread_pool.front().id != front_id){
+			while(thread_pool.front() != front_id){
 				thread_pool.push(thread_pool.front());
 				thread_pool.pop();
 			}
@@ -584,7 +583,6 @@ void signal_handler(int signo) {
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
-		printf("size is: %d\n", thread_pool.size());
 		printf("jumping to: %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
@@ -641,6 +639,7 @@ void the_nowhere_zone(void) {
 	/* Don't schedule the thread anymore */
 	// make sure we don't jump to a blocked thread
 	while(thread_pool.front().blocked){
+		printf("seg faulting here?\n");
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
