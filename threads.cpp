@@ -76,6 +76,7 @@ typedef struct {
 	std::vector<pthread_t> blocking;
 	// the return value of the thread
 	void* return_value;
+	bool exited = false;
 } tcb_t;
 
 /*
@@ -314,7 +315,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 
 		(*value_ptr) =  thread_pool.front().return_value;
-		printf("value_ptr is: %d\n", *value_ptr);
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
@@ -346,15 +346,17 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 	}
 
-	if(exited){
-		thread_pool.front().blocked = false;
+	if(exited || thread_pool.front().exited == true){
+		// clean up
+		(*value_ptr) =  thread_pool.front().return_value;
+		thread_pool.front().stack = NULL;
+		thread_pool.pop();
 		return ESRCH;
 	}
 
 	thread_pool.front().blocker = true;
 	thread_pool.front().blocking.push_back(curr_front);
 	RESUME_TIMER;
-	printf("jumping, %d!\n", thread_pool.front().id);
 	longjmp(thread_pool.front().jb,1);
 
 
@@ -583,7 +585,6 @@ void signal_handler(int signo) {
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
-		printf("jumping to: %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 
@@ -599,47 +600,40 @@ void signal_handler(int signo) {
  * also acts as a pseudo-scheduler by scheduling the next thread manually
  */
 void the_nowhere_zone(void) {
-	printf("thread_pool.front().id is: %d\n", thread_pool.front().id);
 	/* free stack memory of exiting thread
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
-	printf("in nowhere zone\n");
-	if(!thread_pool.front().blocker ){
-		free((void*) thread_pool.front().stack);
-		thread_pool.front().stack = NULL;
-		thread_pool.pop();
-	}else{
-		thread_pool.front().blocked = true;
-		thread_pool.push(thread_pool.front());
-		pthread_t thread_id = thread_pool.front().id;
-		std::vector<pthread_t> curr_blocked;
-		// copy blcoking vector over, so we can unblock all of the blocked threads
-		for(int i=0; i < thread_pool.front().blocking.size(); i++){
-			curr_blocked.push_back(thread_pool.front().blocking[i]);
-		}
-		void* curr_return_value = thread_pool.front().return_value;
-		thread_pool.pop();
 
-		// unblock all threads in blocking vector
-		while(thread_pool.front().id != thread_id){
-			// unblock the threads that are blocked by this thread
-			if(std::find(curr_blocked.begin(), curr_blocked.end(), thread_pool.front().id) != curr_blocked.end()){
-				// unblock this if this is the only thread blocking it
-				thread_pool.front().num_blocking -= 1;
-				if(thread_pool.front().num_blocking == 0){
-					thread_pool.front().return_value = curr_return_value;
-					thread_pool.front().blocked = false;
-				}
+	thread_pool.front().blocked = true;
+	thread_pool.front().exited = true;
+	thread_pool.push(thread_pool.front());
+	pthread_t thread_id = thread_pool.front().id;
+	std::vector<pthread_t> curr_blocked;
+	// copy blcoking vector over, so we can unblock all of the blocked threads
+	for(int i=0; i < thread_pool.front().blocking.size(); i++){
+		curr_blocked.push_back(thread_pool.front().blocking[i]);
+	}
+	void* curr_return_value = thread_pool.front().return_value;
+	thread_pool.pop();
+
+	// unblock all threads in blocking vector
+	while(thread_pool.front().id != thread_id){
+		// unblock the threads that are blocked by this thread
+		if(std::find(curr_blocked.begin(), curr_blocked.end(), thread_pool.front().id) != curr_blocked.end()){
+			// unblock this if this is the only thread blocking it
+			thread_pool.front().num_blocking -= 1;
+			if(thread_pool.front().num_blocking == 0){
+				thread_pool.front().return_value = curr_return_value;
+				thread_pool.front().blocked = false;
 			}
-			thread_pool.push(thread_pool.front());
-			thread_pool.pop();
 		}
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
 	}
 
 	/* Don't schedule the thread anymore */
 	// make sure we don't jump to a blocked thread
 	while(thread_pool.front().blocked){
-		printf("seg faulting here?\n");
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
@@ -651,7 +645,6 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
-		printf("jump to %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 }
