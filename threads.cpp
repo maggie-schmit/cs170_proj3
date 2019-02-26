@@ -315,6 +315,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 
 		(*value_ptr) =  thread_pool.front().return_value;
+		printf("value_ptr is: %d\n", *value_ptr);
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
