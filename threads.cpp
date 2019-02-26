@@ -125,7 +125,7 @@ void lock(){
 }
 
 void unlock(){
-	RESUME_TIMER;
+	START_TIMER;
 }
 
 
@@ -299,7 +299,7 @@ void pthread_exit(void *value_ptr) {
 
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
-	STOP_TIMER;
+	PAUSE_TIMER;
 	printf("in pthread join\n");
 	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
@@ -307,7 +307,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	if( setjmp(thread_pool.front().jb) != 0){
 		// this is the return part
 
-		STOP_TIMER;
+		PAUSE_TIMER;
 		// make sure that thread is at front
 		while(thread_pool.front().id != thread ){
 			thread_pool.push(thread_pool.front());
@@ -327,7 +327,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 		// old thread is now at front
 		thread_pool.front().blocked = false;
-		START_TIMER;
+		RESUME_TIMER;
 		return 0;
 	}
 
@@ -353,7 +353,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	thread_pool.front().blocker = true;
 	thread_pool.front().blocking.push_back(curr_front);
-	START_TIMER;
+	RESUME_TIMER;
 	printf("jumping, %d!\n", thread_pool.front().id);
 	longjmp(thread_pool.front().jb,1);
 
@@ -433,7 +433,7 @@ int sem_destroy(sem_t *sem){
 int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	//stop timer so we dont get interrupted;
-	STOP_TIMER;
+	PAUSE_TIMER;
 	printf("in semaphore wait, %d\n", thread_pool.front().id);
 
 	auto itr = semaphore_map.find(((sem)->__align));
@@ -442,7 +442,7 @@ int sem_wait(sem_t *sem){
 		printf("found cursem, %d\n", cur_sem.sem_id);
 	}
 	if(cur_sem.sem_called){
-		// sem is already in use 
+		// sem is already in use
 		printf("cur_sem is already called\n");
 		printf("thread trying to access this code is %d\n", thread_pool.front().id);
 
@@ -462,12 +462,12 @@ int sem_wait(sem_t *sem){
 		// return 0;
 		} else if (cur_sem.cur_val < 0){
 			semaphore_map[cur_sem.sem_id] = cur_sem;
-			START_TIMER;
+			RESUME_TIMER;
 			return -1;
 		}
 		semaphore_map[cur_sem.sem_id] = cur_sem;
 
-		START_TIMER;
+		RESUME_TIMER;
 
 		thread_pool.front().blocked = true;
 		if(setjmp(thread_pool.front().jb) != 0){
@@ -488,11 +488,11 @@ int sem_wait(sem_t *sem){
 	// 		(cur_sem.wait_pool).push(thread_pool.front());
 	// }
 
-	
+
 
 	semaphore_map[cur_sem.sem_id] = cur_sem;
 	//start timer again
-	START_TIMER;
+	RESUME_TIMER;
 
 	// (thread_pool.front()).blocked == true;
 
@@ -503,7 +503,7 @@ int sem_wait(sem_t *sem){
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
 
-	STOP_TIMER;
+	PAUSE_TIMER;
 	printf("in semaphore post\n");
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
@@ -526,7 +526,7 @@ int sem_post(sem_t *sem){
 			}
 			// thread_pool.push((cur_sem.wait_pool).front());
 		} else if (cur_sem.cur_val < 0){
-			START_TIMER;
+			RESUME_TIMER;
 			semaphore_map[cur_sem.sem_id] = cur_sem;
 			return -1;
 		}
@@ -534,7 +534,7 @@ int sem_post(sem_t *sem){
 	semaphore_map[cur_sem.sem_id] = cur_sem;
 	printf("in semaphore post done\n");
 
-	START_TIMER;
+	RESUME_TIMER;
 
 	return 0;
 }
@@ -661,4 +661,3 @@ void pthread_exit_wrapper()
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
 }
-
