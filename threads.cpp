@@ -271,7 +271,6 @@ void pthread_exit(void *value_ptr) {
 	}
 	// value_ptr is the return value
 	// put this in return_value
-	// printf("value_ptr is: %p\n", value_ptr);
 	thread_pool.front().return_value = value_ptr;
 
 	/* stop the timer so we don't get interrupted */
@@ -431,22 +430,14 @@ int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	//stop timer so we dont get interrupted;
 	PAUSE_TIMER;
-	// printf("in semaphore wait, %d\n", thread_pool.front().id);
 
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
-		// printf("found cursem, %d\n", cur_sem.sem_id);
 	}
 	if(cur_sem.cur_val == 0){
 		// sem is already in use
-		// printf("cur_sem is already called\n");
-		// printf("thread trying to access this code is %d\n", thread_pool.front().id);
-
-
-
 		cur_sem.wait_pool.push(thread_pool.front());
-
 
 		semaphore_map[cur_sem.sem_id] = cur_sem;
 
@@ -497,11 +488,7 @@ int sem_post(sem_t *sem){
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
 	 }
-	// if((cur_sem.wait_pool).empty()){
-	// 	printf("cur val in post %d\n", cur_sem.cur_val);
 
-	// 	cur_sem.cur_val = cur_sem.cur_val + 1;
-	// } else {
 	 	cur_sem.cur_val = cur_sem.cur_val + 1;
 
 		if (cur_sem.cur_val > 0){
@@ -545,7 +532,6 @@ int sem_post(sem_t *sem){
  */
 void signal_handler(int signo) {
 
-	// printf("in the signal handler\n");
 	/* if no other thread, just return */
 	if(thread_pool.size() <= 1) {
 		return;
@@ -562,7 +548,6 @@ void signal_handler(int signo) {
 		// check if the front thread is blocked.
 		// If it IS blocked, then we want to push it to the back and call another thread
 		while(thread_pool.front().blocked == true){
-			// printf("thread id is: %d\n", thread_pool.front().id);
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
@@ -632,7 +617,6 @@ void the_nowhere_zone(void) {
 	/* Don't schedule the thread anymore */
 	// make sure we don't jump to a blocked thread
 	while(thread_pool.front().blocked){
-		printf("can't jump to %d; NEXT!!\n", thread_pool.front().id);
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
@@ -640,7 +624,6 @@ void the_nowhere_zone(void) {
 	/* If the last thread just exited, jump to main_tcb and exit.
 	   Otherwise, start timer again and jump to next thread*/
 	if(thread_pool.size() == 0) {
-		// printf("jumping to main!\n");
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
