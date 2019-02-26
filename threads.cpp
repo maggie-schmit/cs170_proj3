@@ -371,8 +371,12 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 int sem_init (sem_t *sem, int pshared, unsigned value ){
 
-	unsigned long sem_id_count = 0;
+	// unsigned long sem_id_count = 0;
+	printf("in sem init\n");
+	mysem_t* cur_sem;
+	// cur_sem.sem_id = sem_id_count;
 
+<<<<<<< HEAD
 	mysem_t cur_sem;
 	cur_sem.sem_id = sem_id_count;
 
@@ -381,11 +385,27 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 		sem_id_count++;
 		cur_sem.sem_id = sem_id_count;
 	}
+=======
+	// auto itr = semaphore_map.find(cur_sem.sem_id);
+	// if ( itr != semaphore_map.end() ){
+	// 	sem_id_count++;
+	// 	cur_sem.sem_id = sem_id_count;
+	// }
+
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 	// cur_sem.mysem = *sem;
+
 	if (value < SEM_VALUE_MAX){
+<<<<<<< HEAD
 		cur_sem.cur_val = value;
 		printf("cur val in init %d\n", cur_sem.cur_val);
 
+=======
+		printf("value %d\n", value);
+
+		cur_sem->cur_val = value;
+		printf("value %d\n", cur_sem->cur_val);
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 	} else {
 		//return error bc value should be less than sem value max
 		return -1;
@@ -396,44 +416,57 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 		return -1;
 	}
 
-	cur_sem.flag_init = true;
-	sem->__align = cur_sem.sem_id;
+	cur_sem->flag_init = true;
+	sem->__align = (long int )&cur_sem;
 	// *sem = tmp_sem.mysem;
-	semaphore_map[cur_sem.sem_id] = cur_sem;
+	// semaphore_map[cur_sem.sem_id] = cur_sem;
 	return 0;
 }
 
 int sem_destroy(sem_t *sem){
-	mysem_t cur_sem;
+	// mysem_t cur_sem;
 	printf("in semaphore destroy\n");
-	auto itr = semaphore_map.find(((sem)->__align));
-	if ( itr != semaphore_map.end() ){
-		cur_sem = itr->second;
-	} else {
-		return -1;
-	}
 
+	mysem_t* cur_sem = (mysem_t*)(sem->__align);
+	STOP_TIMER;
+	// auto itr = semaphore_map.find(cur_sem->sem_id);
+	// if ( itr != semaphore_map.end() ){
+	// 	cur_sem = itr->second;
+	// } else {
+	// 	return -1;
+	// }
 
+<<<<<<< HEAD
 	if (cur_sem.flag_init == true){
 		while ((cur_sem.wait_pool).size() != 0){
 			printf("does it get here?\n");
 			(cur_sem.wait_pool).pop();
+=======
+
+	if (cur_sem->flag_init == true){
+		while ((cur_sem->wait_pool).size() != 0){
+			(cur_sem->wait_pool).pop();
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 		}
-		// cur_sem.cur_val = NULL;
-		semaphore_map.erase(cur_sem.sem_id);
+		cur_sem->cur_val = NULL;
+		// semaphore_map.erase(cur_sem.sem_id);
+
 	} else {
 		return -1;
 	}
+
+	START_TIMER;
 
 	return 0;
 }
 
 //idk need to call block whatever
 int sem_wait(sem_t *sem){
-	mysem_t cur_sem;
+	mysem_t* cur_sem = (mysem_t*)(sem->__align);
 	//stop timer so we dont get interrupted;
 	STOP_TIMER;
 	printf("in semaphore wait\n");
+<<<<<<< HEAD
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
@@ -447,21 +480,40 @@ int sem_wait(sem_t *sem){
 
 		// return 0;
 	} else if (cur_sem.cur_val < 0){
+=======
+	// auto itr = semaphore_map.find(((sem)->__align));
+	// if ( itr != semaphore_map.end() ){
+	// 	cur_sem = itr->second;
+	// }
+
+
+	if(cur_sem->cur_val > 0){
+		cur_sem->cur_val = cur_sem->cur_val - 1;
+		printf("value %d\n", cur_sem->cur_val);
+	} else if (cur_sem->cur_val < 0){
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 		START_TIMER;
 		return -1;
 	}
 
+<<<<<<< HEAD
 
 	if (cur_sem.cur_val == 0){
 		//not sure if correct....
 		// (thread_pool.front()).blocked = true;
 		printf("pushing something in\n");
 		(cur_sem.wait_pool).push(thread_pool.front());
+=======
+	if (cur_sem->cur_val == 0){
+		//not sure if correct....
+		// (thread_pool.front()).blocked = true;
+		(cur_sem->wait_pool).push(thread_pool.front());
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 
 	}
 	//start timer again
 	START_TIMER;
-
+	printf("in semaphore done wait\n");
 	// (thread_pool.front()).blocked == true;
 
 	return 0;
@@ -469,9 +521,10 @@ int sem_wait(sem_t *sem){
 }
 
 int sem_post(sem_t *sem){
-	mysem_t cur_sem;
+	mysem_t* cur_sem = (mysem_t*)(sem->__align);
 	STOP_TIMER;
 	printf("in semaphore post\n");
+<<<<<<< HEAD
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
@@ -487,16 +540,37 @@ int sem_post(sem_t *sem){
 			printf("in semaphore post pop\n");
 
 			(cur_sem.wait_pool).pop();
+=======
+	// auto itr = semaphore_map.find(((sem)->__align));
+	//  if ( itr != semaphore_map.end() ){
+	//  	cur_sem = itr->second;
+	//  }
+	// if((cur_sem->wait_pool).empty()){
+	// 	printf("did this increment?\n");
+	// 	cur_sem->cur_val = cur_sem->cur_val + 1;
+	// } else {
+	 	cur_sem->cur_val = cur_sem->cur_val + 1;
+		printf("cur val %d\n", cur_sem->cur_val);
+		if (cur_sem->cur_val > 0){
+			printf("trying to pop\n");
+			(cur_sem->wait_pool).pop();
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 			// ((cur_sem.wait_pool).front()).blocked = false;
-			// thread_pool.push((cur_sem.wait_pool).front());
-		} else if (cur_sem.cur_val < 0){
+			// thread_pool.push((cur_sem->wait_pool).front());
+		} else if (cur_sem->cur_val < 0){
 			START_TIMER;
 			return -1;
 		}
+<<<<<<< HEAD
 	}
 	
 	printf("in semaphore post done\n");
 
+=======
+	// }
+	
+	printf("in semaphore post done\n");
+>>>>>>> 52ab05425932256213b7db3124c412e98acc41d6
 	START_TIMER;
 
 	return 0;
