@@ -76,7 +76,7 @@ typedef struct {
 	//stores the current value
 	unsigned cur_val;
 	//a pointer to a queue for threads that are waiting
-	int* thread_queue_ptr;
+	// int* thread_queue_ptr;
 
 	/*queue for threads that are waiting*/
 	std::queue<tcb_t> wait_pool;
@@ -359,11 +359,10 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	cur_sem.sem_id = sem_id_count;
 
 	auto itr = semaphore_map.find(cur_sem.sem_id);
-	while ( itr != semaphore_map.end() ){
+	if ( itr != semaphore_map.end() ){
 		sem_id_count++;
 		cur_sem.sem_id = sem_id_count;
 	}
-
 
 	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
@@ -382,12 +381,12 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	sem->__align = cur_sem.sem_id;
 	// *sem = tmp_sem.mysem;
 	semaphore_map[cur_sem.sem_id] = cur_sem;
-
 	return 0;
 }
 
 int sem_destroy(sem_t *sem){
 	mysem_t cur_sem;
+	printf("in semaphore destroy\n");
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
@@ -400,7 +399,7 @@ int sem_destroy(sem_t *sem){
 		while ((cur_sem.wait_pool).size() != 0){
 			(cur_sem.wait_pool).pop();
 		}
-		cur_sem.cur_val = NULL;
+		// cur_sem.cur_val = NULL;
 		semaphore_map.erase(cur_sem.sem_id);
 	} else {
 		return -1;
@@ -414,6 +413,7 @@ int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	//stop timer so we dont get interrupted;
 	STOP_TIMER;
+	printf("in semaphore wait\n");
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
@@ -446,6 +446,7 @@ int sem_wait(sem_t *sem){
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
 	STOP_TIMER;
+	printf("in semaphore post\n");
 	auto itr = semaphore_map.find(((sem)->__align));
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
