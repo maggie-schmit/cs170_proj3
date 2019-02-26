@@ -374,6 +374,7 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	unsigned long sem_id_count = 0;
 
 	mysem_t cur_sem;
+	cur_sem.sem_called = false;
 	cur_sem.sem_id = sem_id_count;
 
 	auto itr = semaphore_map.find(cur_sem.sem_id);
@@ -442,14 +443,17 @@ int sem_wait(sem_t *sem){
 	}
 	if(cur_sem.cur_val == 0){
 		// sem is already in use
+		printf("cur_sem is already called\n");
 		printf("thread trying to access this code is %d\n", thread_pool.front().id);
+
+
 
 		semaphore_map[cur_sem.sem_id].wait_pool.push(thread_pool.front());
 
 
 		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
-		// semaphore_map[cur_sem.sem_id] = cur_sem;
-		// printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
+		semaphore_map[cur_sem.sem_id] = cur_sem;
+		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 
 		RESUME_TIMER;
 
@@ -475,12 +479,15 @@ int sem_wait(sem_t *sem){
 	}
 
 	printf("got down here hello, %d\n", thread_pool.front().id);
+	cur_sem.sem_called = true;
 
 	// if (cur_sem.cur_val == 0){
 	// 		//not sure if correct....
 	// 		// (thread_pool.front()).blocked = true;
 	// 		(cur_sem.wait_pool).push(thread_pool.front());
 	// }
+
+
 
 	semaphore_map[cur_sem.sem_id] = cur_sem;
 	//start timer again
@@ -507,6 +514,7 @@ int sem_post(sem_t *sem){
 	// 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	// } else {
 	 	cur_sem.cur_val = cur_sem.cur_val + 1;
+	 	cur_sem.sem_called = false;
 	 	printf("in semaphore post pop before\n");
 		if (cur_sem.cur_val > 0){
 			printf("in semaphore post pop\n");
