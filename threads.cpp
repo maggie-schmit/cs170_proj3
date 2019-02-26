@@ -316,7 +316,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		printf("return value is: %d\n", (int) thread_pool.front().return_value);
 		value_ptr = (void**) thread_pool.front().return_value;
 		printf("value ptr is: %d\n", value_ptr);
-		printf("dereferenced it is: %d\n", &value_ptr);
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
@@ -330,7 +329,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		// old thread is now at front
 		thread_pool.front().blocked = false;
 		START_TIMER;
-		// perror("something went wrong with setjmp\n");
 		return 0;
 	}
 
