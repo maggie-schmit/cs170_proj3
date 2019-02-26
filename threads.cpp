@@ -592,6 +592,7 @@ void signal_handler(int signo) {
  * also acts as a pseudo-scheduler by scheduling the next thread manually
  */
 void the_nowhere_zone(void) {
+	printf("thread_pool.front().id is: %d\n", thread_pool.front().id);
 	/* free stack memory of exiting thread
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
