@@ -453,10 +453,10 @@ int sem_wait(sem_t *sem){
 		printf("cur_sem queue size is: %d\n", cur_sem.wait_pool.size());
 		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 		semaphore_map[cur_sem.sem_id] = cur_sem;
-		while(!cur_sem.wait_pool.empty()){
-			semaphore_map[cur_sem.sem_id].wait_pool.push(cur_sem.wait_pool.front());
-			cur_sem.wait_pool.pop();
-		}
+		// while(!cur_sem.wait_pool.empty()){
+		// 	semaphore_map[cur_sem.sem_id].wait_pool.push(cur_sem.wait_pool.front());
+		// 	cur_sem.wait_pool.pop();
+		// }
 		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 
 		RESUME_TIMER;
