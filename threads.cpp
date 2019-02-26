@@ -314,7 +314,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 
 		printf("return value is: %d\n", (int) thread_pool.front().return_value);
-		value_ptr = thread_pool.front().return_value;
+		value_ptr = (void**) thread_pool.front().return_value;
 		printf("value ptr is: %d\n", value_ptr);
 		printf("dereferenced it is: %d\n", &value_ptr);
 		// get rid of thread
