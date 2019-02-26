@@ -374,7 +374,6 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	unsigned long sem_id_count = 0;
 
 	mysem_t cur_sem;
-	cur_sem.sem_called = false;
 	cur_sem.sem_id = sem_id_count;
 
 	auto itr = semaphore_map.find(cur_sem.sem_id);
@@ -479,7 +478,6 @@ int sem_wait(sem_t *sem){
 	}
 
 	printf("got down here hello, %d\n", thread_pool.front().id);
-	cur_sem.sem_called = true;
 
 	// if (cur_sem.cur_val == 0){
 	// 		//not sure if correct....
@@ -514,7 +512,6 @@ int sem_post(sem_t *sem){
 	// 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	// } else {
 	 	cur_sem.cur_val = cur_sem.cur_val + 1;
-	 	cur_sem.sem_called = false;
 	 	printf("in semaphore post pop before\n");
 		if (cur_sem.cur_val > 0){
 			printf("in semaphore post pop\n");
