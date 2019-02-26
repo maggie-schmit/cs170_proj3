@@ -330,6 +330,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		// old thread is now at front
 		thread_pool.front().blocked = false;
 		START_TIMER;
+		printf("3 value ptr is: %d\n", value_ptr);
 		return 0;
 	}
 
