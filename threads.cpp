@@ -535,7 +535,7 @@ int sem_post(sem_t *sem){
 				semaphore_map[cur_sem.sem_id].wait_pool.pop();
 			}
 			// put the front thread back in front
-			while(thread_pool.front() != front_id){
+			while(thread_pool.front().id != front_id){
 				thread_pool.push(thread_pool.front());
 				thread_pool.pop();
 			}
