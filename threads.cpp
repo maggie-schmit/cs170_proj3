@@ -319,6 +319,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
+		printf("2 value ptr is: %d\n", value_ptr);
 
 
 		// make normal thread not blocked

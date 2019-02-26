@@ -41,10 +41,9 @@ int main() {
 	pthread_create(&thread_2, NULL, bbq_party, NULL);
 
 	pthread_join(thread_1, (void**)&r1);
-	printf("r1 = %d\n",r1);
 	pthread_join(thread_2, (void**)&r2);
 
-
+	printf("r1 = %d\n",r1);
 	printf("r2 = %d\n",r2);
 
 	sem_destroy(&my_sem);
