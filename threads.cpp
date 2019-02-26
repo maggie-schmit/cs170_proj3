@@ -528,6 +528,7 @@ int sem_post(sem_t *sem){
 					thread_pool.push(thread_pool.front());
 					thread_pool.pop();
 				}
+				printf("thread id is: %d\n", thread_pool.front().id);
 				thread_pool.front().blocked = false;
 				(cur_sem.wait_pool).pop();
 			}
@@ -553,7 +554,7 @@ int sem_post(sem_t *sem){
  */
 void signal_handler(int signo) {
 
-	printf("in the signal handler\n");
+	// printf("in the signal handler\n");
 	/* if no other thread, just return */
 	if(thread_pool.size() <= 1) {
 		return;
@@ -570,7 +571,7 @@ void signal_handler(int signo) {
 		// check if the front thread is blocked.
 		// If it IS blocked, then we want to push it to the back and call another thread
 		while(thread_pool.front().blocked == true || thread_pool.front().id == 0){
-			printf("thread id is: %d\n", thread_pool.front().id);
+			// printf("thread id is: %d\n", thread_pool.front().id);
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
