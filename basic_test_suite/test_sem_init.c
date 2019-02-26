@@ -1,5 +1,4 @@
 #include <pthread.h>
-#include "threads.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/select.h>
@@ -25,7 +24,7 @@ void * bbq_party(void *args) {
 }
 
 int main() {
-	
+
 	printf("Inviting friends to the party!\n");
 
 	for (int i = 0; i < 5; i++){

@@ -1,9 +1,9 @@
 #include <pthread.h>
-#include "threads.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/select.h>
 #include <unistd.h>
+#include "lock.h"
 struct timeval tv;
 
 #define wait(i) ({tv.tv_sec = i;tv.tv_usec=500000;select(0,NULL,NULL,NULL,&tv);})
@@ -27,7 +27,7 @@ void * bbq_party(void *args) {
 }
 
 int main() {
-	
+
 	printf("Inviting friends to the party!\n");
 
 	for (int i = 0; i < 5; i++){

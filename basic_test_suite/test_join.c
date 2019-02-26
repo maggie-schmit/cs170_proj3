@@ -1,5 +1,4 @@
 #include <pthread.h>
-#include "threads.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/select.h>
