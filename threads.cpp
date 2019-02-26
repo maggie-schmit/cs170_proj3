@@ -532,6 +532,7 @@ int sem_post(sem_t *sem){
 				thread_pool.front().blocked = false;
 				semaphore_map[cur_sem.sem_id].wait_pool.pop();
 			}
+			semaphore_map[cur_sem.sem_id] = cur_sem;
 			// thread_pool.push((cur_sem.wait_pool).front());
 		} else if (cur_sem.cur_val < 0){
 			RESUME_TIMER;
