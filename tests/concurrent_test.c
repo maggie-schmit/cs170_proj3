@@ -47,6 +47,7 @@ int main() {
   pthread_create(&thread_2, NULL, bbq_party, NULL);
   pthread_create(&thread_3, NULL, ship_mates, NULL);
 
+  pthread_join(thread_3, NULL);
   force_sleep(5);
 
 
