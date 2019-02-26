@@ -631,6 +631,7 @@ void the_nowhere_zone(void) {
 	/* Don't schedule the thread anymore */
 	// make sure we don't jump to a blocked thread
 	while(thread_pool.front().blocked){
+		printf("seg faulting here?\n");
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
