@@ -29,6 +29,7 @@ void * bbq_party(void *args) {
 	printf("Thread %u has the lock\n",(unsigned)pthread_self());
 	force_sleep(2);
 	sem_post(&my_sem);
+	printf("got here...");
 	return (void*)HAMBURGER;
 }
 
