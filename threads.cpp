@@ -547,6 +547,7 @@ int sem_post(sem_t *sem){
  */
 void signal_handler(int signo) {
 
+	printf("in the signal handler\n");
 	/* if no other thread, just return */
 	if(thread_pool.size() <= 1) {
 		return;
@@ -566,6 +567,7 @@ void signal_handler(int signo) {
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
+		printf("jumping to: %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 
