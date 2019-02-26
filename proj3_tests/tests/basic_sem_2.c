@@ -6,24 +6,24 @@
 #define HAMBURGER 1
 
 void force_sleep(int seconds) {
-	printf("1");
+	printf("1\n");
 	struct timespec initial_spec, remainder_spec;
-	printf("2");
+	printf("2\n");
 	initial_spec.tv_sec = (time_t)seconds;
-	printf("3");
+	printf("3\n");
 	initial_spec.tv_nsec = 0;
-	printf("4");
+	printf("4\n");
 	int err = -1;
-	printf("5");
+	printf("5\n");
 	while(err == -1) {
-		printf("6");
+		printf("6\n");
 		err = nanosleep(&initial_spec,&remainder_spec);
-		printf("7");
+		printf("7\n");
 		initial_spec = remainder_spec;
-		printf("8");
+		printf("8\n");
 		memset(&remainder_spec,0,sizeof(remainder_spec));
 	}
-	printf("9");
+	printf("9\n");
 }
 
 sem_t my_sem;
@@ -34,6 +34,7 @@ void * bbq_party(void *args) {
 
 	sem_wait(&my_sem);
 	printf("Thread %u has the lock\n",(unsigned)pthread_self());
+	printf("about to go to force sleep\n");
 	force_sleep(1);
 	sem_post(&my_sem);
 	return (void*)HAMBURGER;
