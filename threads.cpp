@@ -467,7 +467,7 @@ int sem_wait(sem_t *sem){
 			return -1;
 		}
 		semaphore_map[cur_sem.sem_id] = cur_sem;
-		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].waiting_queue.size());
+		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 
 		RESUME_TIMER;
 
