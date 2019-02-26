@@ -316,11 +316,11 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 		printf("return value is: %d\n", (int) thread_pool.front().return_value);
 		(*value_ptr) =  thread_pool.front().return_value;
-		printf("value ptr is: %d\n", value_ptr);
+		printf("value ptr is: %d\n", *value_ptr);
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
-		printf("2 value ptr is: %d\n", value_ptr);
+		printf("2 value ptr is: %d\n", *value_ptr);
 
 
 		// make normal thread not blocked
@@ -331,12 +331,13 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		// old thread is now at front
 		thread_pool.front().blocked = false;
 		START_TIMER;
-		printf("3 value ptr is: %d\n", value_ptr);
+		printf("3 value ptr is: %d\n", *value_ptr);
 		return 0;
 	}
 
 	// check if thread is exited already
 	bool exited = false;
+	printf("checking if exited\n");
 
 
 	while(thread_pool.front().id != thread ){
@@ -351,12 +352,14 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	if(exited){
+		printf("ruffle my jimmies it's done!\n");
 		thread_pool.front().blocked = false;
 		return ESRCH;
 	}
 
 	thread_pool.front().blocker = true;
 	thread_pool.front().blocking.push_back(curr_front);
+	printf("down here\n");
 	START_TIMER;
 	longjmp(thread_pool.front().jb,1);
 
