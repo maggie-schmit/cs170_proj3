@@ -523,6 +523,12 @@ int sem_post(sem_t *sem){
 
 			if(!cur_sem.wait_pool.empty()){
 				((cur_sem.wait_pool).front()).blocked = false;
+				pthread_t blocked_id = ((cur_sem.wait_pool).front()).id;
+				while(thread_pool.front().id != blocked_id){
+					thread_pool.push(thread_pool.front());
+					thread_pool.pop();
+				}
+				thread_pool.front().blocked = false;
 				(cur_sem.wait_pool).pop();
 			}
 			// thread_pool.push((cur_sem.wait_pool).front());
