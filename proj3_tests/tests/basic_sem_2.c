@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <semaphore.h>
+#include <unistd.h>
 #define HAMBURGER 1
 
 void force_sleep(int seconds) {
@@ -35,6 +36,7 @@ void * bbq_party(void *args) {
 	sem_wait(&my_sem);
 	printf("Thread %u has the lock\n",(unsigned)pthread_self());
 	// force_sleep(1);
+	sleep(1);
 	sem_post(&my_sem);
 	return (void*)HAMBURGER;
 }
