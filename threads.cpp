@@ -452,7 +452,7 @@ int sem_wait(sem_t *sem){
 			// (thread_pool.front()).blocked = true;
 					printf("cur_sem is already called\n");
 
-			(cur_sem.wait_pool).push(thread_pool.front());
+			semaphore_map[cur_sem.sem_id].wait_pool.push(thread_pool.front());
 		}
 		printf("cur_sem is already called\n");
 
@@ -523,15 +523,15 @@ int sem_post(sem_t *sem){
 			printf("in semaphore post pop\n");
 
 			if(!cur_sem.wait_pool.empty()){
-				((cur_sem.wait_pool).front()).blocked = false;
-				pthread_t blocked_id = ((cur_sem.wait_pool).front()).id;
+				semaphore_map[cur_sem.sem_id].wait_pool.front()).blocked = false;
+				pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
 				while(thread_pool.front().id != blocked_id){
 					thread_pool.push(thread_pool.front());
 					thread_pool.pop();
 				}
 				printf("thread id is: %d\n", thread_pool.front().id);
 				thread_pool.front().blocked = false;
-				(cur_sem.wait_pool).pop();
+				semaphore_map[cur_sem.sem_id].wait_pool.pop();
 			}
 			// thread_pool.push((cur_sem.wait_pool).front());
 		} else if (cur_sem.cur_val < 0){
