@@ -440,7 +440,7 @@ int sem_wait(sem_t *sem){
 		cur_sem = itr->second;
 		printf("found cursem, %d\n", cur_sem.sem_id);
 	}
-	if(semaphore_map[cur_sem.sem_id].cur_val == 0){
+	if(cur_sem.cur_val == 0){
 		// sem is already in use
 		printf("thread trying to access this code is %d\n", thread_pool.front().id);
 
@@ -448,6 +448,8 @@ int sem_wait(sem_t *sem){
 
 
 		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
+		// semaphore_map[cur_sem.sem_id] = cur_sem;
+		// printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 
 		RESUME_TIMER;
 
@@ -461,12 +463,13 @@ int sem_wait(sem_t *sem){
 		return 0;
 	}
 
-	if(semaphore_map[cur_sem.sem_id].cur_val > 0){
-		semaphore_map[cur_sem.sem_id].cur_val = semaphore_map[cur_sem.sem_id].cur_val - 1;
-		printf("cur val in wait %d\n", semaphore_map[cur_sem.sem_id].cur_val);
+	if(cur_sem.cur_val > 0){
+		cur_sem.cur_val = cur_sem.cur_val - 1;
+		printf("cur val in wait %d\n", cur_sem.cur_val);
 
 	// return 0;
-	} else if (semaphore_map[cur_sem.sem_id].cur_val < 0){
+	} else if (cur_sem.cur_val < 0){
+		semaphore_map[cur_sem.sem_id] = cur_sem;
 		RESUME_TIMER;
 		return -1;
 	}
@@ -479,6 +482,7 @@ int sem_wait(sem_t *sem){
 	// 		(cur_sem.wait_pool).push(thread_pool.front());
 	// }
 
+	semaphore_map[cur_sem.sem_id] = cur_sem;
 	//start timer again
 	RESUME_TIMER;
 
@@ -502,12 +506,12 @@ int sem_post(sem_t *sem){
 
 	// 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	// } else {
-	 	semaphore_map[cur_sem.sem_id].cur_val = semaphore_map[cur_sem.sem_id].cur_val + 1;
+	 	cur_sem.cur_val = cur_sem.cur_val + 1;
 	 	printf("in semaphore post pop before\n");
-		if (semaphore_map[cur_sem.sem_id].cur_val > 0){
+		if (cur_sem.cur_val > 0){
 			printf("in semaphore post pop\n");
 
-			if(!semaphore_map[cur_sem.sem_id].wait_pool.empty()){
+			if(!cur_sem.wait_pool.empty()){
 				semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
 				pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
 				while(thread_pool.front().id != blocked_id){
@@ -519,11 +523,13 @@ int sem_post(sem_t *sem){
 				semaphore_map[cur_sem.sem_id].wait_pool.pop();
 			}
 			// thread_pool.push((cur_sem.wait_pool).front());
-		} else if (semaphore_map[cur_sem.sem_id].cur_val < 0){
+		} else if (cur_sem.cur_val < 0){
 			RESUME_TIMER;
+			semaphore_map[cur_sem.sem_id] = cur_sem;
 			return -1;
 		}
 	// }
+	semaphore_map[cur_sem.sem_id] = cur_sem;
 	printf("in semaphore post done\n");
 
 	RESUME_TIMER;
