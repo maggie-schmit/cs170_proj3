@@ -457,8 +457,8 @@ int sem_wait(sem_t *sem){
 		printf("cur_sem is already called\n");
 
 		if(cur_sem.cur_val > 0){
-		cur_sem.cur_val = cur_sem.cur_val - 1;
-		printf("cur val in wait %d\n", cur_sem.cur_val);
+			cur_sem.cur_val = cur_sem.cur_val - 1;
+			printf("cur val in wait %d\n", cur_sem.cur_val);
 
 		// return 0;
 		} else if (cur_sem.cur_val < 0){
@@ -466,6 +466,7 @@ int sem_wait(sem_t *sem){
 			RESUME_TIMER;
 			return -1;
 		}
+		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 		semaphore_map[cur_sem.sem_id] = cur_sem;
 		printf("queue is of size %d\n", semaphore_map[cur_sem.sem_id].wait_pool.size());
 
