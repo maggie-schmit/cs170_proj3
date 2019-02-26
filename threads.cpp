@@ -643,6 +643,7 @@ void the_nowhere_zone(void) {
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
+		printf("jump to %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 }
