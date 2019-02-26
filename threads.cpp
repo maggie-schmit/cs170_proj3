@@ -521,9 +521,11 @@ int sem_post(sem_t *sem){
 		if (cur_sem.cur_val > 0){
 			printf("in semaphore post pop\n");
 
+			pthread_t front_id = thread_pool.front().id;
 			if(!cur_sem.wait_pool.empty()){
 				semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
 				pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
+				// unblocked the blocked thread
 				while(thread_pool.front().id != blocked_id){
 					thread_pool.push(thread_pool.front());
 					thread_pool.pop();
@@ -531,6 +533,11 @@ int sem_post(sem_t *sem){
 				printf("thread id is: %d\n", thread_pool.front().id);
 				thread_pool.front().blocked = false;
 				semaphore_map[cur_sem.sem_id].wait_pool.pop();
+			}
+			// put the front thread back in front
+			while(thread_pool.front() != front_id){
+				thread_pool.push(thread_pool.front());
+				thread_pool.pop();
 			}
 			semaphore_map[cur_sem.sem_id] = cur_sem;
 			// thread_pool.push((cur_sem.wait_pool).front());
