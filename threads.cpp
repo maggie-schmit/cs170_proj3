@@ -336,6 +336,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	// check if thread is exited already
 	bool exited = false;
+	printf("checking if exited\n");
 
 
 	while(thread_pool.front().id != thread ){
@@ -350,6 +351,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	if(exited){
+		printf("ruffle my jimmies it's done!\n");
 		thread_pool.front().blocked = false;
 		return ESRCH;
 	}
