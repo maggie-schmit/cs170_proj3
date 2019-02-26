@@ -17,8 +17,10 @@
 #include <string.h>
 #include <queue>
 #include <semaphore.h>
-
-
+#include <unordered_map>
+#include <map>
+#include <vector>
+#include <algorithm>
 /*
  * these could go in a .h file but i'm lazy
  * see comments before functions for detail
@@ -26,7 +28,9 @@
 void signal_handler(int signo);
 void the_nowhere_zone(void);
 static int ptr_mangle(int p);
-
+void pthread_exit_wrapper();
+void lock();
+void unlock();
 
 /*
  *Timer globals
@@ -60,19 +64,33 @@ typedef struct {
 	jmp_buf jb;
 	/* stack pointer for thread; for main thread, this will be NULL */
 	char *stack;
-
+	// this is the stuff for pthread_join
+	// indicates whether the thread is currently blocked
 	bool blocked = false;
+	// num_blocking counts the number of threads blocking this thread
+	int num_blocking = 0;
+	// indicates if the thread is currently blocking something
+	// used for garbage collecting
+	bool blocker = false;
+	// ids of all of the threads the thread is blocking
+	std::vector<pthread_t> blocking;
+	// the return value of the thread
+	void* return_value;
 } tcb_t;
 
 /*
  * Additional Semaphore Struct definition
  */
 typedef struct {
-	sem_t mysem;
+	// sem_t *mysem;
+	unsigned int sem_id;
 	//stores the current value
 	unsigned cur_val;
 	//a pointer to a queue for threads that are waiting
-	int* thread_queue_ptr;
+	// int* thread_queue_ptr;
+
+	/*queue for threads that are waiting*/
+	std::queue<tcb_t> wait_pool;
 	//a flag that indicates whether the semaphore is initialized
 	bool flag_init = false;
 } mysem_t;
@@ -81,8 +99,14 @@ typedef struct {
  * Globals for thread scheduling and control
  */
 
+//keep track of semaphore
+std::unordered_map<unsigned int, mysem_t> semaphore_map;
+
 /* queue for pool thread, easy for round robin */
 static std::queue<tcb_t> thread_pool;
+
+/*queue for threads that are waiting*/
+std::queue<tcb_t> wait_pool;
 
 /* keep separate handle for main thread */
 static tcb_t main_tcb;
@@ -94,6 +118,14 @@ static unsigned long id_counter = 1;
 static int has_initialized = 0;
 
 
+void lock(){
+	// we don't want to be interrupted
+	STOP_TIMER;
+}
+
+void unlock(){
+	RESUME_TIMER;
+}
 
 
 /*
@@ -184,7 +216,7 @@ int pthread_create(pthread_t *restrict_thread, const pthread_attr_t *restrict_at
 	tmp_tcb.stack = (char *) malloc (32767);
 
 	*(int*)(tmp_tcb.stack+32763) = (int)restrict_arg;
-	*(int*)(tmp_tcb.stack+32759) = (int)pthread_exit;
+	*(int*)(tmp_tcb.stack+32759) = (int)pthread_exit_wrapper;
 
 	/* initialize jump buf structure to be 0, just in case there's garbage */
 	memset(&tmp_tcb.jb,0,sizeof(tmp_tcb.jb));
@@ -236,6 +268,10 @@ void pthread_exit(void *value_ptr) {
 	if(has_initialized == 0) {
 		exit(0);
 	}
+	// value_ptr is the return value
+	// put this in return_value
+	printf("value_ptr is: %p\n", value_ptr);
+	thread_pool.front().return_value = value_ptr;
 
 	/* stop the timer so we don't get interrupted */
 	STOP_TIMER;
@@ -258,26 +294,98 @@ void pthread_exit(void *value_ptr) {
 	longjmp(garbage_collector.jb,1);
 }
 
+
+
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
+	STOP_TIMER;
+	printf("in pthread join\n");
+	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
+	thread_pool.front().num_blocking += 1;
+	if( setjmp(thread_pool.front().jb) != 0){
+		// this is the return part
 
-	// TODO: check if thread is exited already
-	
+		STOP_TIMER;
+		// make sure that thread is at front
+		while(thread_pool.front().id != thread ){
+			thread_pool.push(thread_pool.front());
+			thread_pool.pop();
+		}
 
-	return 0;
+		printf("return value is: %p\n", thread_pool.front().return_value);
+		value_ptr = & thread_pool.front().return_value;
+		// get rid of thread
+		thread_pool.front().stack = NULL;
+		thread_pool.pop();
+
+
+		// make normal thread not blocked
+		while(thread_pool.front().id != curr_front){
+			thread_pool.push(thread_pool.front());
+			thread_pool.pop();
+		}
+		// old thread is now at front
+		thread_pool.front().blocked = false;
+		START_TIMER;
+		// perror("something went wrong with setjmp\n");
+		return 0;
+	}
+
+	// check if thread is exited already
+	bool exited = false;
+
+
+	while(thread_pool.front().id != thread ){
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
+		if(thread_pool.front().id == curr_front){
+			// wrapped around to the calling thread
+			// this means that thread is already exited
+			exited = true;
+			break;
+		}
+	}
+
+	if(exited){
+		thread_pool.front().blocked = false;
+		return ESRCH;
+	}
+
+	thread_pool.front().blocker = true;
+	thread_pool.front().blocking.push_back(curr_front);
+	START_TIMER;
+	longjmp(thread_pool.front().jb,1);
+
+
+	printf("TRESPASSING\n");
+	return 1;
 }
+
+
 
 //TODO: sem_init, sem_destroy, sem_wait, sem_post
 //this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
 
 //global to declare current semaphore??
-mysem_t cur_sem;
 
-int sem_init (sem_t ∗sem, int pshared, unsigned value ){
-	cur_sem.mysem = *sem;
+int sem_init (sem_t *sem, int pshared, unsigned value ){
+
+	unsigned long sem_id_count = 0;
+
+	mysem_t cur_sem;
+	cur_sem.sem_id = sem_id_count;
+
+	auto itr = semaphore_map.find(cur_sem.sem_id);
+	if ( itr != semaphore_map.end() ){
+		sem_id_count++;
+		cur_sem.sem_id = sem_id_count;
+	}
+	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
 		cur_sem.cur_val = value;
+		printf("cur val in init %d\n", cur_sem.cur_val);
+
 	} else {
 		//return error bc value should be less than sem value max
 		return -1;
@@ -289,43 +397,111 @@ int sem_init (sem_t ∗sem, int pshared, unsigned value ){
 	}
 
 	cur_sem.flag_init = true;
+	sem->__align = cur_sem.sem_id;
 	// *sem = tmp_sem.mysem;
-
+	semaphore_map[cur_sem.sem_id] = cur_sem;
 	return 0;
 }
 
 int sem_destroy(sem_t *sem){
+	mysem_t cur_sem;
+	printf("in semaphore destroy\n");
+	auto itr = semaphore_map.find(((sem)->__align));
+	if ( itr != semaphore_map.end() ){
+		cur_sem = itr->second;
+	} else {
+		return -1;
+	}
+
+
+	if (cur_sem.flag_init == true){
+		while ((cur_sem.wait_pool).size() != 0){
+			printf("does it get here?\n");
+			(cur_sem.wait_pool).pop();
+		}
+		// cur_sem.cur_val = NULL;
+		semaphore_map.erase(cur_sem.sem_id);
+	} else {
+		return -1;
+	}
 
 	return 0;
 }
 
 //idk need to call block whatever
 int sem_wait(sem_t *sem){
-	while(cur_sem.cur_val == 0){
-		lock();
+	mysem_t cur_sem;
+	//stop timer so we dont get interrupted;
+	STOP_TIMER;
+	printf("in semaphore wait\n");
+	auto itr = semaphore_map.find(((sem)->__align));
+	if ( itr != semaphore_map.end() ){
+		cur_sem = itr->second;
+		printf("found cursem\n");
 	}
+
 
 	if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
-		return 0;
+		printf("cur val in wait %d\n", cur_sem.cur_val);
+
+		// return 0;
 	} else if (cur_sem.cur_val < 0){
+		START_TIMER;
 		return -1;
 	}
+
+
+	if (cur_sem.cur_val == 0){
+		//not sure if correct....
+		// (thread_pool.front()).blocked = true;
+		printf("pushing something in\n");
+		(cur_sem.wait_pool).push(thread_pool.front());
+
+	}
+	//start timer again
+	START_TIMER;
+
+	// (thread_pool.front()).blocked == true;
+
 	return 0;
+
 }
 
 int sem_post(sem_t *sem){
+	mysem_t cur_sem;
+	STOP_TIMER;
+	printf("in semaphore post\n");
+	auto itr = semaphore_map.find(((sem)->__align));
+	 if ( itr != semaphore_map.end() ){
+	 	cur_sem = itr->second;
+	 }
+	if((cur_sem.wait_pool).empty()){
+		printf("cur val in post %d\n", cur_sem.cur_val);
+
+		cur_sem.cur_val = cur_sem.cur_val + 1;
+	} else {
+	 	cur_sem.cur_val = cur_sem.cur_val + 1;
+	 	printf("in semaphore post pop before\n");
+		if (cur_sem.cur_val > 0){
+			printf("in semaphore post pop\n");
+
+			(cur_sem.wait_pool).pop();
+			// ((cur_sem.wait_pool).front()).blocked = false;
+			// thread_pool.push((cur_sem.wait_pool).front());
+		} else if (cur_sem.cur_val < 0){
+			START_TIMER;
+			return -1;
+		}
+	}
+	
+	printf("in semaphore post done\n");
+
+	START_TIMER;
+
 	return 0;
 }
 
-void lock(){
-	// we don't want to be interrupted
-	STOP_TIMER;
-}
-
-void unlock(){
-	RESUME_TIMER;
-}
 /*
  * signal_handler()
  *
@@ -348,7 +524,7 @@ void signal_handler(int signo) {
 		/* resume scheduler and GOOOOOOOOOO */
 		// check if the front thread is blocked.
 		// If it IS blocked, then we want to push it to the back and call another thread
-		while(thread_pool.front().blocked == true){
+		while(thread_pool.front().blocked == true || thread_pool.front().id == 0){
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
@@ -370,15 +546,50 @@ void the_nowhere_zone(void) {
 	/* free stack memory of exiting thread
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
-	free((void*) thread_pool.front().stack);
-	thread_pool.front().stack = NULL;
+	printf("in nowhere zone\n");
+	if(!thread_pool.front().blocker ){
+		free((void*) thread_pool.front().stack);
+		thread_pool.front().stack = NULL;
+		thread_pool.pop();
+	}else{
+		thread_pool.front().blocked = true;
+		thread_pool.push(thread_pool.front());
+		pthread_t thread_id = thread_pool.front().id;
+		std::vector<pthread_t> curr_blocked;
+		// copy blcoking vector over, so we can unblock all of the blocked threads
+		for(int i=0; i < thread_pool.front().blocking.size(); i++){
+			curr_blocked.push_back(thread_pool.front().blocking[i]);
+		}
+		void* curr_return_value = thread_pool.front().return_value;
+		thread_pool.pop();
+
+		// unblock all threads in blocking vector
+		while(thread_pool.front().id != thread_id){
+			// unblock the threads that are blocked by this thread
+			if(std::find(curr_blocked.begin(), curr_blocked.end(), thread_pool.front().id) != curr_blocked.end()){
+				// unblock this if this is the only thread blocking it
+				thread_pool.front().num_blocking -= 1;
+				if(thread_pool.front().num_blocking == 0){
+					thread_pool.front().return_value = curr_return_value;
+					thread_pool.front().blocked = false;
+				}
+			}
+			thread_pool.push(thread_pool.front());
+			thread_pool.pop();
+		}
+	}
 
 	/* Don't schedule the thread anymore */
-	thread_pool.pop();
+	// make sure we don't jump to a blocked thread
+	while(thread_pool.front().blocked){
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
+	}
 
 	/* If the last thread just exited, jump to main_tcb and exit.
 	   Otherwise, start timer again and jump to next thread*/
 	if(thread_pool.size() == 0) {
+		// printf("jumping to main!\n");
 		longjmp(main_tcb.jb,1);
 	} else {
 		START_TIMER;
@@ -405,4 +616,11 @@ int ptr_mangle(int p)
     : "%eax"
     );
     return ret;
+}
+
+void pthread_exit_wrapper()
+{
+  unsigned int res;
+  asm("movl %%eax, %0\n":"=r"(res));
+  pthread_exit((void *) res);
 }
