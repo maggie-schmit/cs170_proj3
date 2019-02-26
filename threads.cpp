@@ -314,13 +314,10 @@ int pthread_join(pthread_t thread, void **value_ptr){
 			thread_pool.pop();
 		}
 
-		printf("return value is: %d\n", (int) thread_pool.front().return_value);
 		(*value_ptr) =  thread_pool.front().return_value;
-		printf("value ptr is: %d\n", *value_ptr);
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
-		printf("2 value ptr is: %d\n", *value_ptr);
 
 
 		// make normal thread not blocked
@@ -331,13 +328,11 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		// old thread is now at front
 		thread_pool.front().blocked = false;
 		START_TIMER;
-		printf("3 value ptr is: %d\n", *value_ptr);
 		return 0;
 	}
 
 	// check if thread is exited already
 	bool exited = false;
-	printf("checking if exited\n");
 
 
 	while(thread_pool.front().id != thread ){
@@ -352,15 +347,14 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	if(exited){
-		printf("ruffle my jimmies it's done!\n");
 		thread_pool.front().blocked = false;
 		return ESRCH;
 	}
 
 	thread_pool.front().blocker = true;
 	thread_pool.front().blocking.push_back(curr_front);
-	printf("down here\n");
 	START_TIMER;
+	printf("jumping, %d!\n", thread_pool.front().id);
 	longjmp(thread_pool.front().jb,1);
 
 
@@ -455,31 +449,46 @@ int sem_wait(sem_t *sem){
 		if (cur_sem.cur_val == 0){
 			//not sure if correct....
 			// (thread_pool.front()).blocked = true;
+					printf("cur_sem is already called\n");
+
 			(cur_sem.wait_pool).push(thread_pool.front());
 		}
-		START_TIMER;
-		sleep(500000000);
-	}
+		printf("cur_sem is already called\n");
 
-	printf("got down here\n");
-	cur_sem.sem_called = true;
-
-	if (cur_sem.cur_val == 0){
-			//not sure if correct....
-			// (thread_pool.front()).blocked = true;
-			(cur_sem.wait_pool).push(thread_pool.front());
-	}
-
-	if(cur_sem.cur_val > 0){
+		if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
 		printf("cur val in wait %d\n", cur_sem.cur_val);
 
 		// return 0;
-	} else if (cur_sem.cur_val < 0){
+		} else if (cur_sem.cur_val < 0){
+			semaphore_map[cur_sem.sem_id] = cur_sem;
+			START_TIMER;
+			return -1;
+		}
 		semaphore_map[cur_sem.sem_id] = cur_sem;
+
 		START_TIMER;
-		return -1;
+
+		thread_pool.front().blocked = true;
+		if(setjmp(thread_pool.front().jb) != 0){
+			printf("back after everything, eh?\n");
+			return 0;
+		}
+		printf("starting to sleep, %d\n", thread_pool.front().id);
+		sleep(500000000);
+		return 0;
 	}
+
+	printf("got down here hello, %d\n", thread_pool.front().id);
+	cur_sem.sem_called = true;
+
+	// if (cur_sem.cur_val == 0){
+	// 		//not sure if correct....
+	// 		// (thread_pool.front()).blocked = true;
+	// 		(cur_sem.wait_pool).push(thread_pool.front());
+	// }
+
+	
 
 	semaphore_map[cur_sem.sem_id] = cur_sem;
 	//start timer again
@@ -493,6 +502,7 @@ int sem_wait(sem_t *sem){
 
 int sem_post(sem_t *sem){
 	mysem_t cur_sem;
+
 	STOP_TIMER;
 	printf("in semaphore post\n");
 	auto itr = semaphore_map.find(((sem)->__align));
@@ -510,8 +520,10 @@ int sem_post(sem_t *sem){
 		if (cur_sem.cur_val > 0){
 			printf("in semaphore post pop\n");
 
-			(cur_sem.wait_pool).pop();
-			// ((cur_sem.wait_pool).front()).blocked = false;
+			if(!cur_sem.wait_pool.empty()){
+				((cur_sem.wait_pool).front()).blocked = false;
+				(cur_sem.wait_pool).pop();
+			}
 			// thread_pool.push((cur_sem.wait_pool).front());
 		} else if (cur_sem.cur_val < 0){
 			START_TIMER;
@@ -649,3 +661,4 @@ void pthread_exit_wrapper()
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
 }
+
