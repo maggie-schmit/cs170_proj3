@@ -93,6 +93,7 @@ typedef struct {
 	std::queue<tcb_t> wait_pool;
 	//a flag that indicates whether the semaphore is initialized
 	bool flag_init = false;
+	bool sem_called;
 } mysem_t;
 
 /*
@@ -376,6 +377,7 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	unsigned long sem_id_count = 0;
 
 	mysem_t cur_sem;
+	cur_sem.sem_called = false;
 	cur_sem.sem_id = sem_id_count;
 
 	auto itr = semaphore_map.find(cur_sem.sem_id);
@@ -435,13 +437,35 @@ int sem_wait(sem_t *sem){
 	mysem_t cur_sem;
 	//stop timer so we dont get interrupted;
 	STOP_TIMER;
-	printf("in semaphore wait\n");
+	printf("in semaphore wait, %d\n", thread_pool.front().id);
+
 	auto itr = semaphore_map.find(((sem)->__align));
 	if ( itr != semaphore_map.end() ){
 		cur_sem = itr->second;
-		printf("found cursem\n");
+		printf("found cursem, %d\n", cur_sem.sem_id);
+	}
+	if(cur_sem.sem_called){
+		// sem is already in use 
+		printf("cur_sem is already called\n");
+		printf("thread trying to access this code is %d\n", thread_pool.front().id);
+
+		if (cur_sem.cur_val == 0){
+			//not sure if correct....
+			// (thread_pool.front()).blocked = true;
+			(cur_sem.wait_pool).push(thread_pool.front());
+		}
+		START_TIMER;
+		sleep(500000000);
 	}
 
+	printf("got down here\n");
+	cur_sem.sem_called = true;
+
+	if (cur_sem.cur_val == 0){
+			//not sure if correct....
+			// (thread_pool.front()).blocked = true;
+			(cur_sem.wait_pool).push(thread_pool.front());
+	}
 
 	if(cur_sem.cur_val > 0){
 		cur_sem.cur_val = cur_sem.cur_val - 1;
@@ -449,18 +473,12 @@ int sem_wait(sem_t *sem){
 
 		// return 0;
 	} else if (cur_sem.cur_val < 0){
+		semaphore_map[cur_sem.sem_id] = cur_sem;
 		START_TIMER;
 		return -1;
 	}
 
-
-	if (cur_sem.cur_val == 0){
-		//not sure if correct....
-		// (thread_pool.front()).blocked = true;
-		printf("pushing something in\n");
-		(cur_sem.wait_pool).push(thread_pool.front());
-
-	}
+	semaphore_map[cur_sem.sem_id] = cur_sem;
 	//start timer again
 	START_TIMER;
 
@@ -478,12 +496,13 @@ int sem_post(sem_t *sem){
 	 if ( itr != semaphore_map.end() ){
 	 	cur_sem = itr->second;
 	 }
-	if((cur_sem.wait_pool).empty()){
-		printf("cur val in post %d\n", cur_sem.cur_val);
+	// if((cur_sem.wait_pool).empty()){
+	// 	printf("cur val in post %d\n", cur_sem.cur_val);
 
-		cur_sem.cur_val = cur_sem.cur_val + 1;
-	} else {
+	// 	cur_sem.cur_val = cur_sem.cur_val + 1;
+	// } else {
 	 	cur_sem.cur_val = cur_sem.cur_val + 1;
+	 	cur_sem.sem_called = false;
 	 	printf("in semaphore post pop before\n");
 		if (cur_sem.cur_val > 0){
 			printf("in semaphore post pop\n");
@@ -493,10 +512,11 @@ int sem_post(sem_t *sem){
 			// thread_pool.push((cur_sem.wait_pool).front());
 		} else if (cur_sem.cur_val < 0){
 			START_TIMER;
+			semaphore_map[cur_sem.sem_id] = cur_sem;
 			return -1;
 		}
-	}
-
+	// }
+	semaphore_map[cur_sem.sem_id] = cur_sem;
 	printf("in semaphore post done\n");
 
 	START_TIMER;
