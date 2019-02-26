@@ -315,6 +315,8 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 		printf("return value is: %p\n", thread_pool.front().return_value);
 		value_ptr = & thread_pool.front().return_value;
+		printf("value ptr is: %p\n", value_ptr);
+		
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
@@ -494,7 +496,7 @@ int sem_post(sem_t *sem){
 			return -1;
 		}
 	}
-	
+
 	printf("in semaphore post done\n");
 
 	START_TIMER;
