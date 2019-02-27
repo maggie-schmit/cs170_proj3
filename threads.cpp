@@ -412,16 +412,30 @@ int sem_destroy(sem_t *sem){
 	}
 
 
-	if (cur_sem.flag_init == true){
-		while ((cur_sem.wait_pool).size() != 0){
-			(cur_sem.wait_pool).pop();
+	if (semaphore_map[cur_sem.sem_id].flag_init == true){
+		while ((semaphore_map[cur_sem.sem_id].wait_pool).size() != 0){
+			semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
+			// pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
+			// printf("this is currently at front %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
+			// // unblocked the blocked thread
+			// while((thread_pool.front().id != blocked_id) && (thread_pool.front().id != 0)){
+			// 	printf("looking %d\n", thread_pool.front().id);
+			// 	thread_pool.push(thread_pool.front());
+			// 	printf("popping %d\n", thread_pool.front().id);
+			// 	thread_pool.pop();
+			// }
+			// printf("found\n");
+			// thread_pool.front().blocked = false;
+			// semaphore_map[cur_sem.sem_id] = cur_sem;
+			// printf("popped off! in queue %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
+			semaphore_map[cur_sem.sem_id].wait_pool.pop();
 		}
 		// cur_sem.cur_val = NULL;
 		semaphore_map.erase(cur_sem.sem_id);
 	} else {
 		return -1;
 	}
-
+	// printf("destory worked\n");
 	return 0;
 }
 
