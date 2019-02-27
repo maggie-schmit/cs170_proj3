@@ -314,7 +314,9 @@ int pthread_join(pthread_t thread, void **value_ptr){
 			thread_pool.pop();
 		}
 
-		(*value_ptr) =  thread_pool.front().return_value;
+		if(thread_pool.front().return_value != NULL && value_ptr != NULL){
+			(*value_ptr) =  thread_pool.front().return_value;
+		}
 		// get rid of thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
@@ -350,8 +352,9 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	printf("about to enter exited if statement\n");
 	if(exited || thread_pool.front().exited == true){
 		// clean up
-		if(thread_pool.front().return_value != NULL){
-			(	*value_ptr) =  thread_pool.front().return_value;
+		if(thread_pool.front().return_value != NULL && value_ptr != NULL){
+			(*value_ptr) =  thread_pool.front().return_value;
+
 		}
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
