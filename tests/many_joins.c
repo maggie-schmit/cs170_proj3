@@ -47,7 +47,7 @@ int main() {
 
 	int r1 = 0, r2 = 0;
   pthread_t threads[10];
-  int r[10]
+  int r[10];
 
   for(int i=0; i < 10; i++){
     pthread_create(&threads[i], NULL, bbq_party, NULL);
