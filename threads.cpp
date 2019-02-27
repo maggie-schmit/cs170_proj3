@@ -300,6 +300,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
 	PAUSE_TIMER;
 	pthread_t curr_front = thread_pool.front().id;
+	printf("about to block %d in pthread_join\n", thread_pool.front().id);
 	thread_pool.front().blocked = true;
 	thread_pool.front().num_blocking += 1;
 	if( setjmp(thread_pool.front().jb) != 0){
@@ -458,10 +459,12 @@ int sem_wait(sem_t *sem){
 		cur_sem.wait_pool.push(thread_pool.front());
 
 		semaphore_map[cur_sem.sem_id] = cur_sem;
+		printf("about to block %d\n", thread_pool.front().id);
+
+		thread_pool.front().blocked = true;
 
 		RESUME_TIMER;
 
-		thread_pool.front().blocked = true;
 		// if(setjmp(thread_pool.front().jb) != 0){
 		// 	return 0;
 		// }
@@ -554,10 +557,12 @@ void signal_handler(int signo) {
 	if(thread_pool.size() <= 1) {
 		return;
 	}
+	PAUSE_TIMER;
 
 	/* Time to schedule another thread! Use setjmp to save this thread's context
 	   on direct invocation, setjmp returns 0. if jumped to from longjmp, returns
 	   non-zero value. */
+	printf("going to set jump thread id %d\n", thread_pool.front().id);
 	if(setjmp(thread_pool.front().jb) == 0) {
 		/* switch threads */
 		thread_pool.push(thread_pool.front());
@@ -566,9 +571,12 @@ void signal_handler(int signo) {
 		// check if the front thread is blocked.
 		// If it IS blocked, then we want to push it to the back and call another thread
 		while(thread_pool.front().blocked == true){
+			// printf("thread pool id is: %d\n", thread_pool.front().id);
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
+		RESUME_TIMER;
+		printf("going to long jump thread id %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 
@@ -588,22 +596,23 @@ void the_nowhere_zone(void) {
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
 	// check if there are threads leftover
-	int exited_threads = 0;
-	pthread_t curr_id = thread_pool.front().id;
-	thread_pool.push(thread_pool.front());
-	thread_pool.pop();
-	while(thread_pool.front().id != curr_id){
-		if(thread_pool.front().exited){
-			exited_threads += 1;
-		}
-		thread_pool.push(thread_pool.front());
-		thread_pool.pop();
-	}
+	// int exited_threads = 0;
+	// pthread_t curr_id = thread_pool.front().id;
+	// thread_pool.push(thread_pool.front());
+	// thread_pool.pop();
+	// while(thread_pool.front().id != curr_id){
+	// 	if(thread_pool.front().exited){
+	// 		exited_threads += 1;
+	// 	}
+	// 	thread_pool.push(thread_pool.front());
+	// 	thread_pool.pop();
+	// }
 
-	if(exited_threads >= (thread_pool.size()-1)){
-		// exit!
-		longjmp(main_tcb.jb,1);
-	}
+	// if(exited_threads >= (thread_pool.size()-1)){
+	// 	// exit!
+	// 	longjmp(main_tcb.jb,1);
+	// }
+	printf("in the nowhere zone with %d\n", thread_pool.front().id);
 
 	thread_pool.front().blocked = true;
 	thread_pool.front().exited = true;

@@ -35,6 +35,11 @@ void *thread_string_pusher(void *arg) {
 	return NULL;
 }
 
+void* ay_there(void* arg){
+	printf("AY BB\n");
+	sleep(1);
+}
+
 void *reader_thread(void *arg) {
 	Queue *q = (Queue *)arg;
 	for (int i = 0; i < 100; ++i) {
@@ -67,14 +72,14 @@ int main(){
 
 	}
 
-	// printf("out of loop to create threads\n");
-	// int times = 0;
-	// while (times < 1000) {
-	// 	char *message;
-	// 	queue_get(&queue, (void *)&message);
-	// 	// fprintf(stdout, "QUEUE SAYS: %s\n", message);
-	// 	times++;
-	// }
+	printf("out of loop to create threads\n");
+	int times = 0;
+	while (times < 1000) {
+		char *message;
+		queue_get(&queue, (void *)&message);
+		// fprintf(stdout, "QUEUE SAYS: %s\n", message);
+		times++;
+	}
 
 	printf("starting pthread join\n");
 	printf("threads size is: %d\n", threads.size());
