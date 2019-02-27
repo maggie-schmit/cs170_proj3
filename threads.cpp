@@ -633,6 +633,7 @@ void the_nowhere_zone(void) {
 
 	if(exited_threads >= (thread_pool.size()-1)){
 		// exit!
+		printf("jumping to main!\n");
 		longjmp(main_tcb.jb,1);
 	}
 
