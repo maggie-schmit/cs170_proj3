@@ -43,15 +43,15 @@ void * time_waster(void *args) {
 }
 
 int main(int argc, char *argv[]) {
-	
+
 	pthread_t p1, p2;
-	
+
 	// int waiting_area[11] = {0};
 
 	// waste time
 	pthread_t p_array[10] = {0};
 	for(int i = 0; i < 10; i++) {
-		pthread_create(p_array+i, NULL, time_waster, waiting_area+i);	
+		pthread_create(p_array+i, NULL, time_waster, NULL);	
 	}
 
 	for (int i = 0; i < 10; ++i) {

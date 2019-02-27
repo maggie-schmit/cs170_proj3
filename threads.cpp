@@ -299,9 +299,11 @@ void pthread_exit(void *value_ptr) {
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
 	PAUSE_TIMER;
+	printf("in pthread_join\n");
 	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
 	thread_pool.front().num_blocking += 1;
+	printf("about to setjmp\n");
 	if( setjmp(thread_pool.front().jb) != 0){
 		// this is the return part
 
@@ -333,6 +335,7 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	bool exited = false;
 
 
+	printf("checking if exited\n");
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
@@ -344,14 +347,18 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 	}
 
+	printf("about to enter exited if statement\n");
 	if(exited || thread_pool.front().exited == true){
 		// clean up
-		(*value_ptr) =  thread_pool.front().return_value;
+		if(thread_pool.front().return_value != NULL){
+			(	*value_ptr) =  thread_pool.front().return_value;
+		}
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
 		return ESRCH;
 	}
 
+	printf("not exited so we're gonna jump\n");
 	thread_pool.front().blocker = true;
 	thread_pool.front().blocking.push_back(curr_front);
 	RESUME_TIMER;
@@ -584,22 +591,6 @@ void the_nowhere_zone(void) {
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
 	// check if there are threads leftover
-	int exited_threads = 0;
-	pthread_t curr_id = thread_pool.front().id;
-	thread_pool.push(thread_pool.front());
-	thread_pool.pop();
-	while(thread_pool.front().id != curr_id){
-		if(thread_pool.front().exited){
-			exited_threads += 1;
-		}
-		thread_pool.push(thread_pool.front());
-		thread_pool.pop();
-	}
-
-	if(exited_threads >= (thread_pool.size()-1)){
-		// exit!
-		longjmp(main_tcb.jb,1);
-	}
 
 	thread_pool.front().blocked = true;
 	thread_pool.front().exited = true;
@@ -628,12 +619,32 @@ void the_nowhere_zone(void) {
 		thread_pool.pop();
 	}
 
-	/* Don't schedule the thread anymore */
-	// make sure we don't jump to a blocked thread
-	while(thread_pool.front().blocked){
+	int exited_threads = 0;
+	pthread_t curr_id = thread_pool.front().id;
+	thread_pool.push(thread_pool.front());
+	thread_pool.pop();
+	while(thread_pool.front().id != curr_id){
+		if(thread_pool.front().exited){
+			exited_threads += 1;
+		}
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
+
+	if(exited_threads >= (thread_pool.size()-1)){
+		// exit!
+		longjmp(main_tcb.jb,1);
+	}
+
+
+	/* Don't schedule the thread anymore */
+	// make sure we don't jump to a blocked thread
+	while(thread_pool.front().blocked || thread_pool.front().exited){
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
+	}
+
+
 
 	/* If the last thread just exited, jump to main_tcb and exit.
 	   Otherwise, start timer again and jump to next thread*/
