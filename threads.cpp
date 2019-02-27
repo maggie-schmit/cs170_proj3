@@ -592,6 +592,7 @@ void the_nowhere_zone(void) {
 	   free(NULL) works */
 	// check if there are threads leftover
 
+	printf("in the nowhere zone\n");
 	thread_pool.front().blocked = true;
 	thread_pool.front().exited = true;
 	thread_pool.push(thread_pool.front());
@@ -645,13 +646,12 @@ void the_nowhere_zone(void) {
 		thread_pool.pop();
 	}
 
-
-
 	/* If the last thread just exited, jump to main_tcb and exit.
 	   Otherwise, start timer again and jump to next thread*/
 	if(thread_pool.size() == 0) {
 		longjmp(main_tcb.jb,1);
 	} else {
+		printf("jumping to: %d\n", thread_pool.front().id);
 		START_TIMER;
 		longjmp(thread_pool.front().jb,1);
 	}
