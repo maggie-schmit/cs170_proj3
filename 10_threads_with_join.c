@@ -37,7 +37,7 @@ void * time_waster(void *args) {
 	// }
 	printf("%u got the OK\n",(unsigned)pthread_self());
 	// int_args[1] = 1;
-	return (void*)HAMBURGER;
+	return NULL;
 }
 
 int main(int argc, char *argv[]) {
