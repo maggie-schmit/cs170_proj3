@@ -301,7 +301,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	PAUSE_TIMER;
 
 	pthread_t curr_front = thread_pool.front().id;
-	printf("about to block %d in pthread_join\n", thread_pool.front().id);
 	thread_pool.front().blocked = true;
 	thread_pool.front().num_blocking += 1;
 	if( setjmp(thread_pool.front().jb) != 0){
@@ -381,7 +380,6 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	mysem_t cur_sem;
 	cur_sem.sem_id = sem_id_count;
 
-	printf("get pthread id: %d\n", thread_pool.front());
 	auto itr = semaphore_map.find(cur_sem.sem_id);
 	if ( itr != semaphore_map.end() ){
 		sem_id_count++;
@@ -390,7 +388,6 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
 		cur_sem.cur_val = value;
-		printf("initialized cur_val to: %d\n", cur_sem.cur_val);
 
 	} else {
 		//return error bc value should be less than sem value max
@@ -450,16 +447,13 @@ int sem_destroy(sem_t *sem){
 int sem_wait(sem_t *sem){
 	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
-	printf("\tsem_post: cur_val is: %d, thread_id is %d\n", cur_sem.cur_val, thread_pool.front().id);
-
 	if (cur_sem.cur_val == 0) {
-		// we would block if we decremented, instead we will go into the queue :) 
+		// we would block if we decremented, instead we will go into the queue :)
 
 		PAUSE_TIMER;
 
 		thread_pool.front().blocked = true; // block the thread
 		//HAVE TO SAVE THE STATE OF THE CURRENT THREAD!!! ! ! ! !  !
-		printf("\tsem_post: we are blocking thread_id %d\n", thread_pool.front().id);
 		if(setjmp(thread_pool.front().jb) == 0) {
 			/* switch threads */
 			cur_sem.wait_pool.push(thread_pool.front());
@@ -473,7 +467,6 @@ int sem_wait(sem_t *sem){
 				thread_pool.pop();
 			}
 			RESUME_TIMER;
-			printf("\tsem_post: going to long jump thread id %d\n", thread_pool.front().id);
 			longjmp(thread_pool.front().jb,1);
 		}
 	}
@@ -547,7 +540,6 @@ int sem_post(sem_t *sem){
 
 		cur_sem.wait_pool.front().blocked = false; // block the thread
 
-		printf("\tsem_post: we are blocking thread_id %d\n", thread_pool.front().id);
 		if(setjmp(thread_pool.front().jb) == 0) {
 			/* switch threads */
 			thread_pool.push(cur_sem.wait_pool.front());
@@ -562,7 +554,6 @@ int sem_post(sem_t *sem){
 				thread_pool.pop();
 			}
 			RESUME_TIMER;
-			printf("\tsem_post: going to long jump thread id %d\n", thread_pool.front().id);
 			longjmp(thread_pool.front().jb,1);
 		}
 	}
@@ -628,7 +619,6 @@ void signal_handler(int signo) {
 	/* Time to schedule another thread! Use setjmp to save this thread's context
 	   on direct invocation, setjmp returns 0. if jumped to from longjmp, returns
 	   non-zero value. */
-	printf("going to set jump thread id %d\n", thread_pool.front().id);
 	if(setjmp(thread_pool.front().jb) == 0) {
 		/* switch threads */
 		thread_pool.push(thread_pool.front());
@@ -642,7 +632,6 @@ void signal_handler(int signo) {
 			thread_pool.pop();
 		}
 		RESUME_TIMER;
-		printf("going to long jump thread id %d\n", thread_pool.front().id);
 		longjmp(thread_pool.front().jb,1);
 	}
 
@@ -678,7 +667,6 @@ void the_nowhere_zone(void) {
 	// 	// exit!
 	// 	longjmp(main_tcb.jb,1);
 	// }
-	printf("in the nowhere zone with %d\n", thread_pool.front().id);
 
 	thread_pool.front().blocked = true;
 	thread_pool.front().exited = true;
