@@ -107,7 +107,7 @@ std::unordered_map<unsigned int, mysem_t> semaphore_map;
 static std::queue<tcb_t> thread_pool;
 
 /*queue for threads that are waiting*/
-std::queue<tcb_t> wait_pool;
+// std::queue<tcb_t> wait_pool;
 
 /* keep separate handle for main thread */
 static tcb_t main_tcb;
@@ -299,6 +299,7 @@ void pthread_exit(void *value_ptr) {
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
 	PAUSE_TIMER;
+
 	pthread_t curr_front = thread_pool.front().id;
 	printf("about to block %d in pthread_join\n", thread_pool.front().id);
 	thread_pool.front().blocked = true;
@@ -334,7 +335,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 
 	// check if thread is exited already
 	bool exited = false;
-
 
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
@@ -381,6 +381,7 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	mysem_t cur_sem;
 	cur_sem.sem_id = sem_id_count;
 
+	printf("get pthread id: %d\n", thread_pool.front());
 	auto itr = semaphore_map.find(cur_sem.sem_id);
 	if ( itr != semaphore_map.end() ){
 		sem_id_count++;
@@ -389,6 +390,7 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 	// cur_sem.mysem = *sem;
 	if (value < SEM_VALUE_MAX){
 		cur_sem.cur_val = value;
+		printf("initialized cur_val to: %d\n", cur_sem.cur_val);
 
 	} else {
 		//return error bc value should be less than sem value max
@@ -419,7 +421,7 @@ int sem_destroy(sem_t *sem){
 
 	if (semaphore_map[cur_sem.sem_id].flag_init == true){
 		while ((semaphore_map[cur_sem.sem_id].wait_pool).size() != 0){
-			semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
+			// semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
 			// pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
 			// printf("this is currently at front %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
 			// // unblocked the blocked thread
@@ -446,104 +448,168 @@ int sem_destroy(sem_t *sem){
 
 //idk need to call block whatever
 int sem_wait(sem_t *sem){
-	mysem_t cur_sem;
-	//stop timer so we dont get interrupted;
-	PAUSE_TIMER;
+	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
-	auto itr = semaphore_map.find(((sem)->__align));
-	if ( itr != semaphore_map.end() ){
-		cur_sem = itr->second;
-	}
-	if(cur_sem.cur_val == 0){
-		// sem is already in use
-		cur_sem.wait_pool.push(thread_pool.front());
+	printf("\tsem_post: cur_val is: %d, thread_id is %d\n", cur_sem.cur_val, thread_pool.front().id);
 
-		semaphore_map[cur_sem.sem_id] = cur_sem;
-		printf("about to block %d\n", thread_pool.front().id);
+	if (cur_sem.cur_val == 0) {
+		// we would block if we decremented, instead we will go into the queue :) 
 
-		thread_pool.front().blocked = true;
+		PAUSE_TIMER;
 
-		RESUME_TIMER;
-
-		// if(setjmp(thread_pool.front().jb) != 0){
-		// 	return 0;
-		// }
-		sleep(500000000);
-		return 0;
-	}
-
-	if(cur_sem.cur_val > 0){
-		cur_sem.cur_val = cur_sem.cur_val - 1;
-
-	// return 0;
-	} else if (cur_sem.cur_val < 0){
-		semaphore_map[cur_sem.sem_id] = cur_sem;
-		RESUME_TIMER;
-		return -1;
+		thread_pool.front().blocked = true; // block the thread
+		//HAVE TO SAVE THE STATE OF THE CURRENT THREAD!!! ! ! ! !  !
+		printf("\tsem_post: we are blocking thread_id %d\n", thread_pool.front().id);
+		if(setjmp(thread_pool.front().jb) == 0) {
+			/* switch threads */
+			cur_sem.wait_pool.push(thread_pool.front());
+			thread_pool.pop();
+			/* resume scheduler and GOOOOOOOOOO */
+			// check if the front thread is blocked.
+			// If it IS blocked, then we want to push it to the back and call another thread
+			while(thread_pool.front().blocked == true){
+				// printf("thread pool id is: %d\n", thread_pool.front().id);
+				thread_pool.push(thread_pool.front());
+				thread_pool.pop();
+			}
+			RESUME_TIMER;
+			printf("\tsem_post: going to long jump thread id %d\n", thread_pool.front().id);
+			longjmp(thread_pool.front().jb,1);
+		}
 	}
 
-	// if (cur_sem.cur_val == 0){
-	// 		//not sure if correct....
-	// 		// (thread_pool.front()).blocked = true;
-	// 		(cur_sem.wait_pool).push(thread_pool.front());
+
+	// mysem_t cur_sem;
+	// //stop timer so we dont get interrupted;
+	// // PAUSE_TIMER;
+
+	// auto itr = semaphore_map.find(((sem)->__align));
+	// if ( itr != semaphore_map.end() ){
+	// 	cur_sem = itr->second;
+	// } else {
+	// 	printf("FATAL ERROR: FAILED TO FIND THE SEMAPHORE");
+	// }
+	// printf("cur_val is: %d, thread_id is %d\n", cur_sem.cur_val, thread_pool.front().id);
+	// if(cur_sem.cur_val == 0){
+	// 	// sem is already in use
+	// 	cur_sem.wait_pool.push(thread_pool.front());
+
+	// 	semaphore_map[cur_sem.sem_id] = cur_sem;
+	// 	printf("about to block %d\n", thread_pool.front().id);
+	// 	thread_pool.pop();
+	// 	// thread_pool.front().blocked = true;
+
+	// 	RESUME_TIMER;
+
+	// 	// if(setjmp(thread_pool.front().jb) != 0){
+	// 	// 	return 0;
+	// 	// }
+	// 	// sleep(500000000); // must be something wrong with this
+	// 	return 0;
 	// }
 
+	// if(cur_sem.cur_val > 0){
+	// 	cur_sem.cur_val = cur_sem.cur_val - 1;
+
+	// // return 0;
+	// } else if (cur_sem.cur_val < 0){
+	// 	printf("FATAL ERROR: semaphore value fell below zero\n");
+	// 	semaphore_map[cur_sem.sem_id] = cur_sem;
+	// 	// RESUME_TIMER;
+	// 	return -1;
+	// }
+
+	// // if (cur_sem.cur_val == 0){
+	// // 		//not sure if correct....
+	// // 		// (thread_pool.front()).blocked = true;
+	// // 		(cur_sem.wait_pool).push(thread_pool.front());
+	// // }
 
 
-	semaphore_map[cur_sem.sem_id] = cur_sem;
-	//start timer again
-	RESUME_TIMER;
 
-	// (thread_pool.front()).blocked == true;
+	// semaphore_map[cur_sem.sem_id] = cur_sem;
+	// //start timer again
+	// // RESUME_TIMER;
 
-	return 0;
+	// // (thread_pool.front()).blocked == true;
+
+	// return 0;
 
 }
 
 int sem_post(sem_t *sem){
-	mysem_t cur_sem;
+	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
-	PAUSE_TIMER;
+	if (cur_sem.wait_pool.empty()) {
+		cur_sem.cur_val++;
+	} else {
+		PAUSE_TIMER;
 
-	auto itr = semaphore_map.find(((sem)->__align));
-	 if ( itr != semaphore_map.end() ){
-	 	cur_sem = itr->second;
-	 }
+		cur_sem.wait_pool.front().blocked = false; // block the thread
 
-	 	cur_sem.cur_val = cur_sem.cur_val + 1;
+		printf("\tsem_post: we are blocking thread_id %d\n", thread_pool.front().id);
+		if(setjmp(thread_pool.front().jb) == 0) {
+			/* switch threads */
+			thread_pool.push(cur_sem.wait_pool.front());
+			cur_sem.wait_pool.pop();
 
-		if (cur_sem.cur_val > 0){
-
-			pthread_t front_id = thread_pool.front().id;
-			if(!cur_sem.wait_pool.empty()){
-				semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
-				pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
-				// unblocked the blocked thread
-				while(thread_pool.front().id != blocked_id){
-					thread_pool.push(thread_pool.front());
-					thread_pool.pop();
-				}
-				thread_pool.front().blocked = false;
-				semaphore_map[cur_sem.sem_id].wait_pool.pop();
-			}
-			// put the front thread back in front
-			while(thread_pool.front().id != front_id){
+			/* resume scheduler and GOOOOOOOOOO */
+			// check if the front thread is blocked.
+			// If it IS blocked, then we want to push it to the back and call another thread
+			while(thread_pool.front().blocked == true){
+				// printf("thread pool id is: %d\n", thread_pool.front().id);
 				thread_pool.push(thread_pool.front());
 				thread_pool.pop();
 			}
-			semaphore_map[cur_sem.sem_id] = cur_sem;
-			// thread_pool.push((cur_sem.wait_pool).front());
-		} else if (cur_sem.cur_val < 0){
 			RESUME_TIMER;
-			semaphore_map[cur_sem.sem_id] = cur_sem;
-			return -1;
+			printf("\tsem_post: going to long jump thread id %d\n", thread_pool.front().id);
+			longjmp(thread_pool.front().jb,1);
 		}
+	}
+
+	// printf("does post even work\n");
+	// PAUSE_TIMER;
+
+	// auto itr = semaphore_map.find(((sem)->__align));
+	// if ( itr != semaphore_map.end() ){
+	// 	cur_sem = itr->second;
 	// }
-	semaphore_map[cur_sem.sem_id] = cur_sem;
 
-	RESUME_TIMER;
+ // 	cur_sem.cur_val = cur_sem.cur_val + 1;
 
-	return 0;
+	// if (cur_sem.cur_val > 0){
+
+	// 	// pthread_t front_id = thread_pool.front().id;
+	// 	// if(!cur_sem.wait_pool.empty()){
+	// 	// 	semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
+	// 	// 	pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
+	// 	// 	// unblocked the blocked thread
+	// 	// 	while(thread_pool.front().id != blocked_id){
+	// 	// 		thread_pool.push(thread_pool.front());
+	// 	// 		thread_pool.pop();
+	// 	// 	}
+	// 	// 	thread_pool.front().blocked = false;
+	// 	// 	semaphore_map[cur_sem.sem_id].wait_pool.pop();
+	// 	// }
+	// 	// // put the front thread back in front
+	// 	// while(thread_pool.front().id != front_id){
+	// 	// 	thread_pool.push(thread_pool.front());
+	// 	// 	thread_pool.pop();
+	// 	// }
+	// 	thread_pool.push((semaphore_map[cur_sem.sem_id].wait_pool).front());
+	// 	semaphore_map[cur_sem.sem_id].wait_pool.pop();
+	// 	// semaphore_map[cur_sem.sem_id] = cur_sem;
+	// } else if (cur_sem.cur_val < 0){
+	// 	RESUME_TIMER;
+	// 	semaphore_map[cur_sem.sem_id] = cur_sem;
+	// 	return -1;
+	// }
+	// // }
+	// semaphore_map[cur_sem.sem_id] = cur_sem;
+
+	// RESUME_TIMER;
+
+	// return 0;
 }
 
 /*
