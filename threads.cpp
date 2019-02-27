@@ -675,38 +675,4 @@ void pthread_exit_wrapper()
   unsigned int res;
   asm("movl %%eax, %0\n":"=r"(res));
   pthread_exit((void *) res);
-}ER;
-		if(thread_pool.front().id == main_tcb.id){
-			longjmp(main_tcb.jb,1);
-		}
-		longjmp(thread_pool.front().jb,1);
-	}
-}
-
-
-
-/*
- * ptr_mangle()
- *
- * ptr mangle magic; for security reasons
- */
-int ptr_mangle(int p)
-{
-    unsigned int ret;
-    __asm__(" movl %1, %%eax;\n"
-        " xorl %%gs:0x18, %%eax;"
-        " roll $0x9, %%eax;"
-        " movl %%eax, %0;"
-    : "=r"(ret)
-    : "r"(p)
-    : "%eax"
-    );
-    return ret;
-}
-
-void pthread_exit_wrapper()
-{
-  unsigned int res;
-  asm("movl %%eax, %0\n":"=r"(res));
-  pthread_exit((void *) res);
 }
