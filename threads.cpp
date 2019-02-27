@@ -299,11 +299,9 @@ void pthread_exit(void *value_ptr) {
 int pthread_join(pthread_t thread, void **value_ptr){
 	// set that this pthread is blocked
 	PAUSE_TIMER;
-	printf("in pthread_join\n");
 	pthread_t curr_front = thread_pool.front().id;
 	thread_pool.front().blocked = true;
 	thread_pool.front().num_blocking += 1;
-	printf("about to setjmp\n");
 	if( setjmp(thread_pool.front().jb) != 0){
 		// this is the return part
 
@@ -337,7 +335,6 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	bool exited = false;
 
 
-	printf("checking if exited\n");
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
@@ -349,19 +346,16 @@ int pthread_join(pthread_t thread, void **value_ptr){
 		}
 	}
 
-	printf("about to enter exited if statement\n");
 	if(exited || thread_pool.front().exited == true){
 		// clean up
 		if(thread_pool.front().return_value != NULL && value_ptr != NULL){
 			(*value_ptr) =  thread_pool.front().return_value;
-
 		}
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
 		return ESRCH;
 	}
 
-	printf("not exited so we're gonna jump\n");
 	thread_pool.front().blocker = true;
 	thread_pool.front().blocking.push_back(curr_front);
 	RESUME_TIMER;
@@ -594,8 +588,23 @@ void the_nowhere_zone(void) {
 	   Note: if this is main thread, we're OK since
 	   free(NULL) works */
 	// check if there are threads leftover
+	int exited_threads = 0;
+	pthread_t curr_id = thread_pool.front().id;
+	thread_pool.push(thread_pool.front());
+	thread_pool.pop();
+	while(thread_pool.front().id != curr_id){
+		if(thread_pool.front().exited){
+			exited_threads += 1;
+		}
+		thread_pool.push(thread_pool.front());
+		thread_pool.pop();
+	}
 
-	printf("in the nowhere zone\n");
+	if(exited_threads >= (thread_pool.size()-1)){
+		// exit!
+		longjmp(main_tcb.jb,1);
+	}
+
 	thread_pool.front().blocked = true;
 	thread_pool.front().exited = true;
 	thread_pool.push(thread_pool.front());
@@ -623,29 +632,9 @@ void the_nowhere_zone(void) {
 		thread_pool.pop();
 	}
 
-	int exited_threads = 1;	 // count yourself in the exited threads
-	pthread_t curr_id = thread_pool.front().id;
-	thread_pool.push(thread_pool.front());
-	thread_pool.pop();
-	while(thread_pool.front().id != curr_id){
-		if(thread_pool.front().exited){
-			exited_threads += 1;
-		}
-		thread_pool.push(thread_pool.front());
-		thread_pool.pop();
-	}
-
-	printf("exited threads: %d, thread_pool size: %d\n", exited_threads, thread_pool.size());
-	if(exited_threads >= (thread_pool.size()-1)){
-		// exit!
-		printf("jumping to main!\n");
-		longjmp(main_tcb.jb,1);
-	}
-
-
 	/* Don't schedule the thread anymore */
 	// make sure we don't jump to a blocked thread
-	while(thread_pool.front().blocked || thread_pool.front().exited){
+	while(thread_pool.front().blocked){
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
 	}
@@ -655,8 +644,38 @@ void the_nowhere_zone(void) {
 	if(thread_pool.size() == 0) {
 		longjmp(main_tcb.jb,1);
 	} else {
-		printf("jumping to: %d\n", thread_pool.front().id);
 		START_TIMER;
+		longjmp(thread_pool.front().jb,1);
+	}
+}
+
+
+
+/*
+ * ptr_mangle()
+ *
+ * ptr mangle magic; for security reasons
+ */
+int ptr_mangle(int p)
+{
+    unsigned int ret;
+    __asm__(" movl %1, %%eax;\n"
+        " xorl %%gs:0x18, %%eax;"
+        " roll $0x9, %%eax;"
+        " movl %%eax, %0;"
+    : "=r"(ret)
+    : "r"(p)
+    : "%eax"
+    );
+    return ret;
+}
+
+void pthread_exit_wrapper()
+{
+  unsigned int res;
+  asm("movl %%eax, %0\n":"=r"(res));
+  pthread_exit((void *) res);
+}ER;
 		if(thread_pool.front().id == main_tcb.id){
 			longjmp(main_tcb.jb,1);
 		}
