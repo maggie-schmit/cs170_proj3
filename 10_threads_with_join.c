@@ -41,9 +41,9 @@ void * time_waster(void *args) {
 }
 
 int main(int argc, char *argv[]) {
-	
+
 	pthread_t p1, p2;
-	
+
 	// int waiting_area[11] = {0};
 	int r2 = 0;
 	// waste time
