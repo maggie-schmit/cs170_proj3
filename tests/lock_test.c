@@ -3,8 +3,6 @@
 #include <semaphore.h>
 #include <unistd.h>
 // #include <mutex>
-#include <threads.cpp>
-
 sem_t mutex;
 
 void* thread2(void* arg){
