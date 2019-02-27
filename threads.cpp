@@ -632,6 +632,7 @@ void the_nowhere_zone(void) {
 		thread_pool.pop();
 	}
 
+	printf("exited threads: %d, thread_pool size: %d\n", exited_threads, thread_pool.size());
 	if(exited_threads >= (thread_pool.size()-1)){
 		// exit!
 		printf("jumping to main!\n");
@@ -653,6 +654,9 @@ void the_nowhere_zone(void) {
 	} else {
 		printf("jumping to: %d\n", thread_pool.front().id);
 		START_TIMER;
+		if(thread_pool.front().id == main_tcb.id){
+			longjmp(main_tcb.jb,1);
+		}
 		longjmp(thread_pool.front().jb,1);
 	}
 }
