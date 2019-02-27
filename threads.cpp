@@ -425,6 +425,7 @@ int sem_destroy(sem_t *sem){
 			// thread_pool.front().blocked = false;
 			// semaphore_map[cur_sem.sem_id] = cur_sem;
 			// printf("popped off! in queue %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
+			cur_sem.wait_pool.front().blocked = false;
 			cur_sem.wait_pool.pop();
 		}
 		// cur_sem.cur_val = NULL;
