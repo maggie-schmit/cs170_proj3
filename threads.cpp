@@ -620,7 +620,7 @@ void the_nowhere_zone(void) {
 		thread_pool.pop();
 	}
 
-	int exited_threads = 0;
+	int exited_threads = 1;	 // count yourself in the exited threads
 	pthread_t curr_id = thread_pool.front().id;
 	thread_pool.push(thread_pool.front());
 	thread_pool.pop();
