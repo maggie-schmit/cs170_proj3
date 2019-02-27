@@ -410,17 +410,10 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 }
 
 int sem_destroy(sem_t *sem){
-	mysem_t cur_sem;
-	auto itr = semaphore_map.find(((sem)->__align));
-	if ( itr != semaphore_map.end() ){
-		cur_sem = itr->second;
-	} else {
-		return -1;
-	}
+	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
-
-	if (semaphore_map[cur_sem.sem_id].flag_init == true){
-		while ((semaphore_map[cur_sem.sem_id].wait_pool).size() != 0){
+	if (cur_sem.flag_init == true){
+		while ((cur_sem.wait_pool).size() != 0){
 			// semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
 			// pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
 			// printf("this is currently at front %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
@@ -435,7 +428,7 @@ int sem_destroy(sem_t *sem){
 			// thread_pool.front().blocked = false;
 			// semaphore_map[cur_sem.sem_id] = cur_sem;
 			// printf("popped off! in queue %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
-			semaphore_map[cur_sem.sem_id].wait_pool.pop();
+			cur_sem.wait_pool.pop();
 		}
 		// cur_sem.cur_val = NULL;
 		semaphore_map.erase(cur_sem.sem_id);
@@ -533,7 +526,7 @@ int sem_wait(sem_t *sem){
 
 	// // (thread_pool.front()).blocked == true;
 
-	// return 0;
+	return 0;
 
 }
 
@@ -609,7 +602,7 @@ int sem_post(sem_t *sem){
 
 	// RESUME_TIMER;
 
-	// return 0;
+	return 0;
 }
 
 /*
