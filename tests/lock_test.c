@@ -2,7 +2,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>
-// #include <mutex>
+#include "lock.h"
+
 sem_t mutex;
 
 void* thread2(void* arg){
