@@ -76,6 +76,8 @@ typedef struct {
 	std::vector<pthread_t> blocking;
 	// the return value of the thread
 	void* return_value;
+	// is true if the thread has already exited
+	// we don't take a thread out of the thread_pool queue until it's return value has been collected
 	bool exited = false;
 } tcb_t;
 
@@ -304,8 +306,8 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	thread_pool.front().blocked = true;
 	thread_pool.front().num_blocking += 1;
 	if( setjmp(thread_pool.front().jb) != 0){
-		// this is the return part
-
+		// jumps here when thread has exited
+		// clean up thread and return to the calling thread
 		PAUSE_TIMER;
 		// make sure that thread is at front
 		while(thread_pool.front().id != thread ){
@@ -313,28 +315,37 @@ int pthread_join(pthread_t thread, void **value_ptr){
 			thread_pool.pop();
 		}
 
+		// collect the return value
+		// don't do that if value_ptr is NULL
 		if(thread_pool.front().return_value != NULL && value_ptr != NULL){
 			(*value_ptr) =  thread_pool.front().return_value;
 		}
+
 		// get rid of thread
+		// clean up stuff
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
 
 
 		// make normal thread not blocked
+		// get calling thread to the front of the queue
 		while(thread_pool.front().id != curr_front){
 			thread_pool.push(thread_pool.front());
 			thread_pool.pop();
 		}
-		// old thread is now at front
+		// calling thread is now at front
 		thread_pool.front().blocked = false;
+		// resume timer and return that it ran successfully
 		RESUME_TIMER;
 		return 0;
 	}
 
-	// check if thread is exited already
+	// setting up pthread_jump
+
+	// true if thread is exited already
 	bool exited = false;
 
+	// check all the threads in queue to get thread to the front
 	while(thread_pool.front().id != thread ){
 		thread_pool.push(thread_pool.front());
 		thread_pool.pop();
@@ -347,46 +358,51 @@ int pthread_join(pthread_t thread, void **value_ptr){
 	}
 
 	if(exited || thread_pool.front().exited == true){
-		// clean up
+		// collect the return value
 		if(thread_pool.front().return_value != NULL && value_ptr != NULL){
 			(*value_ptr) =  thread_pool.front().return_value;
 		}
+		// clean up the old thread
 		thread_pool.front().stack = NULL;
 		thread_pool.pop();
+		// return an error
 		return ESRCH;
 	}
 
+	// set that thread is blocking another thread
 	thread_pool.front().blocker = true;
+	// keep track of which threads it is blocking
 	thread_pool.front().blocking.push_back(curr_front);
 	RESUME_TIMER;
+	// jumping to thread
 	longjmp(thread_pool.front().jb,1);
 
 
+	// it should NEVER get down here
+	// if it does, return an error
 	printf("TRESPASSING\n");
 	return 1;
 }
 
 
-
-//TODO: sem_init, sem_destroy, sem_wait, sem_post
-//this is useful: https://os.itec.kit.edu/downloads/sysarch09-mutualexclusionADD.pdf
-
-//global to declare current semaphore??
-
+// initialize the semaphore
 int sem_init (sem_t *sem, int pshared, unsigned value ){
 
 	unsigned long sem_id_count = 0;
 
+	// create the semaphore
 	mysem_t cur_sem;
 	cur_sem.sem_id = sem_id_count;
 
 	auto itr = semaphore_map.find(cur_sem.sem_id);
+	// add the semaphore to the map
 	if ( itr != semaphore_map.end() ){
 		sem_id_count++;
 		cur_sem.sem_id = sem_id_count;
 	}
-	// cur_sem.mysem = *sem;
+
 	if (value < SEM_VALUE_MAX){
+		// set the value of the semaphore
 		cur_sem.cur_val = value;
 
 	} else {
@@ -401,49 +417,36 @@ int sem_init (sem_t *sem, int pshared, unsigned value ){
 
 	cur_sem.flag_init = true;
 	sem->__align = cur_sem.sem_id;
-	// *sem = tmp_sem.mysem;
 	semaphore_map[cur_sem.sem_id] = cur_sem;
 	return 0;
 }
 
+// destroy the semaphore
 int sem_destroy(sem_t *sem){
+	// get the semaphore that we are destorying
 	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
 	if (cur_sem.flag_init == true){
 		while ((cur_sem.wait_pool).size() != 0){
-			// semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
-			// pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
-			// printf("this is currently at front %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
-			// // unblocked the blocked thread
-			// while((thread_pool.front().id != blocked_id) && (thread_pool.front().id != 0)){
-			// 	printf("looking %d\n", thread_pool.front().id);
-			// 	thread_pool.push(thread_pool.front());
-			// 	printf("popping %d\n", thread_pool.front().id);
-			// 	thread_pool.pop();
-			// }
-			// printf("found\n");
-			// thread_pool.front().blocked = false;
-			// semaphore_map[cur_sem.sem_id] = cur_sem;
-			// printf("popped off! in queue %d\n", semaphore_map[cur_sem.sem_id].wait_pool.front().id);
+			// unblock all of the threads waiting on the semaphore
 			cur_sem.wait_pool.front().blocked = false;
 			cur_sem.wait_pool.pop();
 		}
-		// cur_sem.cur_val = NULL;
+		// take it out of the map
 		semaphore_map.erase(cur_sem.sem_id);
 	} else {
 		return -1;
 	}
-	// printf("destory worked\n");
 	return 0;
 }
 
-//idk need to call block whatever
+// called at the beginning of the critical section
 int sem_wait(sem_t *sem){
+	// get the semaphore
 	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
 	if (cur_sem.cur_val == 0) {
-		// we would block if we decremented, instead we will go into the queue :)
-
+		// this semaphore has reached maximum capacity, so add it to the queue
 		PAUSE_TIMER;
 
 		thread_pool.front().blocked = true; // block the thread
@@ -465,71 +468,19 @@ int sem_wait(sem_t *sem){
 		}
 	}
 
-
-	// mysem_t cur_sem;
-	// //stop timer so we dont get interrupted;
-	// // PAUSE_TIMER;
-
-	// auto itr = semaphore_map.find(((sem)->__align));
-	// if ( itr != semaphore_map.end() ){
-	// 	cur_sem = itr->second;
-	// } else {
-	// 	printf("FATAL ERROR: FAILED TO FIND THE SEMAPHORE");
-	// }
-	// printf("cur_val is: %d, thread_id is %d\n", cur_sem.cur_val, thread_pool.front().id);
-	// if(cur_sem.cur_val == 0){
-	// 	// sem is already in use
-	// 	cur_sem.wait_pool.push(thread_pool.front());
-
-	// 	semaphore_map[cur_sem.sem_id] = cur_sem;
-	// 	printf("about to block %d\n", thread_pool.front().id);
-	// 	thread_pool.pop();
-	// 	// thread_pool.front().blocked = true;
-
-	// 	RESUME_TIMER;
-
-	// 	// if(setjmp(thread_pool.front().jb) != 0){
-	// 	// 	return 0;
-	// 	// }
-	// 	// sleep(500000000); // must be something wrong with this
-	// 	return 0;
-	// }
-
-	// if(cur_sem.cur_val > 0){
-	// 	cur_sem.cur_val = cur_sem.cur_val - 1;
-
-	// // return 0;
-	// } else if (cur_sem.cur_val < 0){
-	// 	printf("FATAL ERROR: semaphore value fell below zero\n");
-	// 	semaphore_map[cur_sem.sem_id] = cur_sem;
-	// 	// RESUME_TIMER;
-	// 	return -1;
-	// }
-
-	// // if (cur_sem.cur_val == 0){
-	// // 		//not sure if correct....
-	// // 		// (thread_pool.front()).blocked = true;
-	// // 		(cur_sem.wait_pool).push(thread_pool.front());
-	// // }
-
-
-
-	// semaphore_map[cur_sem.sem_id] = cur_sem;
-	// //start timer again
-	// // RESUME_TIMER;
-
-	// // (thread_pool.front()).blocked == true;
-
 	return 0;
 
 }
 
+// called at the end of the critical section
 int sem_post(sem_t *sem){
 	mysem_t& cur_sem = semaphore_map[((sem)->__align)];
 
 	if (cur_sem.wait_pool.empty()) {
+		// if there's no one waiting on it, free the semaphore
 		cur_sem.cur_val++;
 	} else {
+		// at least one thread is waiting on this semaphore, so allow that thread to run
 		PAUSE_TIMER;
 
 		cur_sem.wait_pool.front().blocked = false; // block the thread
@@ -551,48 +502,6 @@ int sem_post(sem_t *sem){
 			longjmp(thread_pool.front().jb,1);
 		}
 	}
-
-	// printf("does post even work\n");
-	// PAUSE_TIMER;
-
-	// auto itr = semaphore_map.find(((sem)->__align));
-	// if ( itr != semaphore_map.end() ){
-	// 	cur_sem = itr->second;
-	// }
-
- // 	cur_sem.cur_val = cur_sem.cur_val + 1;
-
-	// if (cur_sem.cur_val > 0){
-
-	// 	// pthread_t front_id = thread_pool.front().id;
-	// 	// if(!cur_sem.wait_pool.empty()){
-	// 	// 	semaphore_map[cur_sem.sem_id].wait_pool.front().blocked = false;
-	// 	// 	pthread_t blocked_id = semaphore_map[cur_sem.sem_id].wait_pool.front().id;
-	// 	// 	// unblocked the blocked thread
-	// 	// 	while(thread_pool.front().id != blocked_id){
-	// 	// 		thread_pool.push(thread_pool.front());
-	// 	// 		thread_pool.pop();
-	// 	// 	}
-	// 	// 	thread_pool.front().blocked = false;
-	// 	// 	semaphore_map[cur_sem.sem_id].wait_pool.pop();
-	// 	// }
-	// 	// // put the front thread back in front
-	// 	// while(thread_pool.front().id != front_id){
-	// 	// 	thread_pool.push(thread_pool.front());
-	// 	// 	thread_pool.pop();
-	// 	// }
-	// 	thread_pool.push((semaphore_map[cur_sem.sem_id].wait_pool).front());
-	// 	semaphore_map[cur_sem.sem_id].wait_pool.pop();
-	// 	// semaphore_map[cur_sem.sem_id] = cur_sem;
-	// } else if (cur_sem.cur_val < 0){
-	// 	RESUME_TIMER;
-	// 	semaphore_map[cur_sem.sem_id] = cur_sem;
-	// 	return -1;
-	// }
-	// // }
-	// semaphore_map[cur_sem.sem_id] = cur_sem;
-
-	// RESUME_TIMER;
 
 	return 0;
 }
@@ -641,31 +550,16 @@ void signal_handler(int signo) {
  * also acts as a pseudo-scheduler by scheduling the next thread manually
  */
 void the_nowhere_zone(void) {
-	/* free stack memory of exiting thread
-	   Note: if this is main thread, we're OK since
-	   free(NULL) works */
-	// check if there are threads leftover
-	// int exited_threads = 0;
-	// pthread_t curr_id = thread_pool.front().id;
-	// thread_pool.push(thread_pool.front());
-	// thread_pool.pop();
-	// while(thread_pool.front().id != curr_id){
-	// 	if(thread_pool.front().exited){
-	// 		exited_threads += 1;
-	// 	}
-	// 	thread_pool.push(thread_pool.front());
-	// 	thread_pool.pop();
-	// }
 
-	// if(exited_threads >= (thread_pool.size()-1)){
-	// 	// exit!
-	// 	longjmp(main_tcb.jb,1);
-	// }
-
+	// make sure that this thread no longer gets run
 	thread_pool.front().blocked = true;
 	thread_pool.front().exited = true;
+	// add to back of the queue
 	thread_pool.push(thread_pool.front());
 	pthread_t thread_id = thread_pool.front().id;
+
+	// unblock all of the threads blocked by this thread
+	// gotta copy over the vector of blocked threads
 	std::vector<pthread_t> curr_blocked;
 	// copy blcoking vector over, so we can unblock all of the blocked threads
 	for(int i=0; i < thread_pool.front().blocking.size(); i++){
