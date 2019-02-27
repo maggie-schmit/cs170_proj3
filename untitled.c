@@ -55,8 +55,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	for (int i = 0; i < 10; ++i) {
-		printf("joining with %d!\n", threads[i]);
-		pthread_join(p_array+i, NULL);
+		pthread_join(p_array[i], NULL);
 		printf(" pthread join works\n");
 	}
 
