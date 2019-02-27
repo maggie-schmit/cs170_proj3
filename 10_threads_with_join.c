@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
+#define HAMBURGER 1
 
 void force_sleep(int seconds) {
 	struct timespec initial_spec, remainder_spec;
@@ -27,9 +28,6 @@ void force_sleep(int seconds) {
 // 	}
 // }
 
-int first_round_status[2] = {0};
-float first_round_results[2] = {0};
-int waste_time = 1;
 
 void * time_waster(void *args) {
 	// int c = 0;
@@ -39,7 +37,7 @@ void * time_waster(void *args) {
 	// }
 	printf("%u got the OK\n",(unsigned)pthread_self());
 	// int_args[1] = 1;
-	return NULL;
+	return (void*)HAMBURGER;
 }
 
 int main(int argc, char *argv[]) {
@@ -47,11 +45,11 @@ int main(int argc, char *argv[]) {
 	pthread_t p1, p2;
 	
 	// int waiting_area[11] = {0};
-
+	int r2 = 0;
 	// waste time
 	pthread_t p_array[10] = {0};
 	for(int i = 0; i < 10; i++) {
-		pthread_create(p_array+i, NULL, time_waster, waiting_area+i);	
+		pthread_create(p_array+i, NULL, time_waster, NULL);	
 	}
 
 	for (int i = 0; i < 10; ++i) {
@@ -59,6 +57,7 @@ int main(int argc, char *argv[]) {
 		printf(" pthread join works\n");
 	}
 
+	printf("r2 = %d\n",r2);
 	printf("All threads done. Returning...\n");
 
 	return 0;
